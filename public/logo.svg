@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44" width="44" height="44" fill="none" shape-rendering="geometricPrecision">
+  <!-- Daedalabs two-toned angular monogram (Safety Orange + Graphite) -->
+  <!-- Base / L-stem -->
+  <path
+    d="M6 38 L18 6 L18 30 L27 30 L30 38 Z"
+    fill="#171717"
+  />
+  <!-- Chevron / D-bow (Safety Orange) -->
+  <path
+    d="M18 6 L30 6 L40 22 L30 38 L27 30 L32 22 L27 14 L18 14 Z"
+    fill="#F97316"
+  />
+</svg>

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%" shape-rendering="geometricPrecision">
+  <!-- White squircle background with rounded corners -->
+  <rect width="512" height="512" rx="112" fill="#ffffff" />
+  
+  <!-- DaedaLabs Two-Tone Monogram (Safety Orange + Graphite) -->
+  <!-- Base / L-stem -->
+  <path
+    d="M 86 416 L 206 96 L 206 336 L 296 336 L 326 416 Z"
+    fill="#171717"
+  />
+  <!-- Chevron / D-bow (Safety Orange) -->
+  <path
+    d="M 206 96 L 326 96 L 426 256 L 326 416 L 296 336 L 346 256 L 296 176 L 206 176 Z"
+    fill="#F97316"
+  />
+</svg>
