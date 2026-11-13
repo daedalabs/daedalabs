@@ -3,24 +3,31 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './tests',
   fullyParallel: false,
-  reporter: 'list',
+  reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
   use: {
     baseURL: 'http://localhost:3000',
     trace: 'on-first-retry',
   },
-  projects: [
-    {
-      name: 'edge',
-      use: {
-        ...devices['Desktop Edge'],
-        channel: 'msedge',
-      },
-    },
-  ],
+  projects: process.env.CI
+    ? [
+        {
+          name: 'chromium',
+          use: { ...devices['Desktop Chrome'] },
+        },
+      ]
+    : [
+        {
+          name: 'edge',
+          use: {
+            ...devices['Desktop Edge'],
+            channel: 'msedge' as const,
+          },
+        },
+      ],
   webServer: {
-    command: 'npm.cmd start',
+    command: process.platform === 'win32' ? 'npm.cmd start' : 'npm run start',
     url: 'http://localhost:3000',
-    reuseExistingServer: true,
-    timeout: 30000,
+    reuseExistingServer: !process.env.CI,
+    timeout: 60000,
   },
 });
