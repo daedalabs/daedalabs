@@ -161,4 +161,40 @@ test.describe('Daedalabs Website', () => {
     expect(json.received).toBe(true);
     expect(json.event).toBe('ping');
   });
+
+  test('mouse scroll wheel navigates between hero and catalog smoothly', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('[data-hydrated="true"]')).toBeVisible();
+
+    // Initially at top of page
+    const initialScrollY = await page.evaluate(() => window.scrollY);
+    expect(initialScrollY).toBe(0);
+
+    // Roll mouse wheel down one notch
+    await page.mouse.wheel(0, 100);
+
+    // Should smoothly scroll towards catalog dock position
+    await expect
+      .poll(async () => page.evaluate(() => window.scrollY), {
+        timeout: 5000,
+        intervals: [100, 200, 300],
+      })
+      .toBeGreaterThan(300);
+
+    // Wait for snap animation to finish settling at dock
+    await page.waitForTimeout(600);
+    const dockedScrollY = await page.evaluate(() => window.scrollY);
+    expect(dockedScrollY).toBeGreaterThan(400);
+
+    // Roll mouse wheel up one notch from dock
+    await page.mouse.wheel(0, -100);
+
+    // Should smoothly scroll back to top of the hero
+    await expect
+      .poll(async () => page.evaluate(() => window.scrollY), {
+        timeout: 5000,
+        intervals: [100, 200, 300],
+      })
+      .toBeLessThan(50);
+  });
 });
