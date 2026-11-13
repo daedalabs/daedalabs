@@ -12,6 +12,12 @@ export interface GithubRepo {
   updated_at: string;
   created_at: string;
   archived: boolean;
+  license?: {
+    key: string;
+    name: string;
+    spdx_id: string;
+    url: string | null;
+  } | null;
 }
 
 const GITHUB_TOKEN =
@@ -39,6 +45,12 @@ interface GithubRepoRaw {
   pushed_at?: string;
   archived?: boolean;
   fork?: boolean;
+  license?: {
+    key: string;
+    name: string;
+    spdx_id: string;
+    url: string | null;
+  } | null;
 }
 
 /**
@@ -108,6 +120,7 @@ export async function getOrgRepos(
       updated_at: repo.updated_at,
       created_at: repo.created_at || repo.updated_at,
       archived: Boolean(repo.archived),
+      license: repo.license || null,
     }));
 }
 
@@ -246,5 +259,47 @@ export function repoToToolItem(repo: GithubRepo) {
     releaseDate: repo.created_at ? repo.created_at.split('T')[0] : null,
     updatedAt: repo.updated_at || null,
     isFromGithub: true,
+    license: repo.license?.spdx_id || repo.license?.name || null,
+    primaryLanguage: repo.language || null,
   };
+}
+
+/**
+ * Extracts a clean, concise plain-text summary from a repository's README markdown
+ * for rich search engine snippets and social previews.
+ */
+export function extractSummaryFromReadme(
+  markdown: string | null | undefined,
+  maxLength = 240
+): string | null {
+  if (!markdown) return null;
+
+  const cleaned = markdown
+    // Remove HTML comments
+    .replace(/<!--[\s\S]*?-->/g, '')
+    // Remove markdown images & badges (e.g. ![badge](url))
+    .replace(/!\[.*?\]\(.*?\)/g, '')
+    // Unwrap links [text](url) -> text
+    .replace(/\[(.*?)\]\(.*?\)/g, '$1')
+    // Remove headings (# Heading)
+    .replace(/^#+\s+.*$/gm, '')
+    // Remove fenced code blocks
+    .replace(/```[\s\S]*?```/g, '')
+    // Unwrap inline code `code` -> code
+    .replace(/`([^`]+)`/g, '$1')
+    // Remove markdown formatting like bold, italics, blockquotes, HTML tags
+    .replace(/<[^>]*>/g, '')
+    .replace(/[*_~>#]/g, '')
+    .split('\n')
+    .map((line) => line.trim())
+    // Find the first substantial descriptive paragraph (> 25 characters)
+    .filter(
+      (line) => line.length > 25 && !line.startsWith('http') && !line.startsWith('npm ')
+    )
+    .join(' ');
+
+  if (!cleaned) return null;
+  const singleLine = cleaned.replace(/\s+/g, ' ').trim();
+  if (singleLine.length <= maxLength) return singleLine;
+  return singleLine.slice(0, maxLength).trim() + '...';
 }

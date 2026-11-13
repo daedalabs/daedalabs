@@ -28,6 +28,8 @@ export interface ToolItem {
   forksCount?: number;
   isFromGithub?: boolean;
   readmeHtml?: string | null;
+  license?: string | null;
+  primaryLanguage?: string | null;
 }
 
 export const categoryLabels: Record<ToolItem['category'], string> = {

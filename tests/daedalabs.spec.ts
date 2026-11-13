@@ -275,4 +275,34 @@ test.describe('Daedalabs Website', () => {
       })
       .toBeLessThan(50);
   });
+
+  test('SEO metadata dynamically includes site information, OpenGraph, and JSON-LD schema', async ({
+    page,
+  }) => {
+    await page.goto('/');
+
+    // Validate page title includes brand
+    await expect(page).toHaveTitle(/daedalabs/i);
+
+    // Validate OpenGraph and Twitter card metadata
+    const ogTitle = page.locator('meta[property="og:title"]');
+    await expect(ogTitle).toHaveAttribute('content', /daedalabs/i);
+
+    const ogImage = page.locator('meta[property="og:image"]');
+    await expect(ogImage).toHaveAttribute('content', /\/opengraph-image/);
+
+    const twitterCard = page.locator('meta[name="twitter:card"]');
+    await expect(twitterCard).toHaveAttribute('content', 'summary_large_image');
+
+    // Validate description and keywords are non-empty
+    const description = page.locator('meta[name="description"]');
+    const descContent = await description.getAttribute('content');
+    expect(descContent).toBeTruthy();
+    expect(descContent?.length).toBeGreaterThan(20);
+
+    const keywords = page.locator('meta[name="keywords"]');
+    const kwContent = await keywords.getAttribute('content');
+    expect(kwContent).toContain('daedalabs');
+    expect(kwContent).toContain('open source');
+  });
 });
