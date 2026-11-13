@@ -148,7 +148,7 @@ test.describe('Daedalabs Website', () => {
     const sitemapRes = await request.get('/sitemap.xml');
     expect(sitemapRes.ok()).toBeTruthy();
     const sitemapText = await sitemapRes.text();
-    expect(sitemapText).toContain('https://daedalabs.org');
+    expect(sitemapText).toContain('https://daedalabs.tech');
   });
 
   test('GitHub webhook GET endpoint reports status online', async ({ request }) => {
@@ -180,7 +180,7 @@ test.describe('Daedalabs Website', () => {
     const text = await res.text();
     expect(text).toContain('User-Agent: *');
     expect(text).toContain('Disallow: /api/');
-    expect(text).toContain('Sitemap: https://daedalabs.org/sitemap.xml');
+    expect(text).toContain('Sitemap: https://daedalabs.tech/sitemap.xml');
   });
 
   test('manifest.webmanifest is accessible and has proper structure', async ({
@@ -202,7 +202,7 @@ test.describe('Daedalabs Website', () => {
 
     // Check canonical link
     const canonical = page.locator('link[rel="canonical"]');
-    await expect(canonical).toHaveAttribute('href', /https:\/\/daedalabs\.org\/?/);
+    await expect(canonical).toHaveAttribute('href', /https:\/\/daedalabs\.tech\/?/);
 
     // Check RSS feed auto-discovery link in head
     const rssLink = page.locator('head link[type="application/rss+xml"]');

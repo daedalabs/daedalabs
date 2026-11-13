@@ -4,7 +4,7 @@
 
 **Personal workshop and experimental software dump by [@juhenes](https://github.com/juhenes).**
 
-[🌐 Visit the Live Directory](https://daedalabs.org)
+[🌐 Visit the Live Directory](https://daedalabs.tech)
 
 </div>
 
@@ -25,10 +25,10 @@ Daedalabs is an open-source playground and laboratory for building, testing, and
 
 All projects in this organization are indexed, categorized, and documented with live demos on the official website:
 
-👉 **[daedalabs.org](https://daedalabs.org)**
+👉 **[daedalabs.tech](https://daedalabs.tech)**
 
 ---
 
 ### 📦 Repositories
 
-All tools in this organization are open source and automatically indexed directly from GitHub on [daedalabs.org](https://daedalabs.org).
+All tools in this organization are open source and automatically indexed directly from GitHub on [daedalabs.tech](https://daedalabs.tech).

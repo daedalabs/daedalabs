@@ -11,7 +11,7 @@ export interface SiteSettings {
 }
 
 export const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') || 'https://daedalabs.org';
+  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') || 'https://daedalabs.tech';
 
 const DEFAULTS: Omit<SiteSettings, 'year'> = {
   name: 'daedalabs',

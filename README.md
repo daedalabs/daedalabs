@@ -1,4 +1,4 @@
-# daedalabs.org
+# daedalabs.tech
 
 The directory website for the [daedalabs](https://github.com/daedalabs) GitHub organization.
 
@@ -8,7 +8,7 @@ Built with Next.js 16, Tailwind CSS, and GitHub API sync.
 
 Daedalabs is a personal GitHub organization by [@juhenes](https://github.com/juhenes) for side projects, CLI utilities, and systems built from scratch.
 
-This repository runs the public site at [daedalabs.org](https://daedalabs.org). It indexes public repositories under `@daedalabs`, renders project READMEs, and provides search and category filters.
+This repository runs the public site at [daedalabs.tech](https://daedalabs.tech). It indexes public repositories under `@daedalabs`, renders project READMEs, and provides search and category filters.
 
 ## Local development
 

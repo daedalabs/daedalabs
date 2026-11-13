@@ -77,7 +77,7 @@ export default async function Image() {
           fontFamily: 'monospace',
         }}
       >
-        <span>daedalabs.org</span>
+        <span>daedalabs.tech</span>
         <span>free for everyone / build from source</span>
       </div>
     </div>,
