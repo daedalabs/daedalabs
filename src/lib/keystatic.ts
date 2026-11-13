@@ -3,6 +3,4 @@ import keystaticConfig from '@root/keystatic.config';
 
 export const reader = createReader(process.cwd(), keystaticConfig);
 
-export type ToolEntry = Awaited<
-  ReturnType<typeof reader.collections.tools.read>
->;
+export type ToolEntry = Awaited<ReturnType<typeof reader.collections.tools.read>>;

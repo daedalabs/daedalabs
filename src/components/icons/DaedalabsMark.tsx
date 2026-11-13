@@ -31,10 +31,7 @@ export function DaedalabsMark({
       {twoTone ? (
         <>
           {/* Base / L-stem (Graphite / Basalt) */}
-          <path
-            d="M6 38 L18 6 L18 30 L27 30 L30 38 Z"
-            fill={baseColor}
-          />
+          <path d="M6 38 L18 6 L18 30 L27 30 L30 38 Z" fill={baseColor} />
           {/* Chevron / D-bow (Safety Orange) */}
           <path
             d="M18 6 L30 6 L40 22 L30 38 L27 30 L32 22 L27 14 L18 14 Z"

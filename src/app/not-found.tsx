@@ -24,8 +24,8 @@ export default async function NotFound() {
         </h1>
 
         <p className="mt-4 max-w-md text-pretty text-[15px] leading-relaxed text-ink-muted">
-          This route does not exist, or the project has not been published to
-          daedalabs yet.
+          This route does not exist, or the project has not been published to daedalabs
+          yet.
         </p>
 
         <div className="mt-8 flex flex-wrap items-center gap-2.5">

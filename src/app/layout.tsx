@@ -13,9 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL || 'https://daedalabs.org'
-  ),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://daedalabs.org'),
   title: {
     default: 'daedalabs',
     template: '%s · daedalabs',
@@ -69,11 +67,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="en"
@@ -95,9 +89,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="flex min-h-full flex-col bg-canvas">
-        {children}
-      </body>
+      <body className="flex min-h-full flex-col bg-canvas">{children}</body>
     </html>
   );
 }

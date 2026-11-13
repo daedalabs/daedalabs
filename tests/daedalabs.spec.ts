@@ -1,7 +1,9 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Daedalabs Website', () => {
-  test('homepage renders cleanly without intro marketing text, stats, or CMS remnants', async ({ page }) => {
+  test('homepage renders cleanly without intro marketing text, stats, or CMS remnants', async ({
+    page,
+  }) => {
     await page.goto('/');
 
     // Check title and brand
@@ -46,7 +48,9 @@ test.describe('Daedalabs Website', () => {
     }
   });
 
-  test('keyboard shortcut "/" focuses the search bar and Esc clears', async ({ page }) => {
+  test('keyboard shortcut "/" focuses the search bar and Esc clears', async ({
+    page,
+  }) => {
     await page.goto('/');
     await expect(page.locator('[data-hydrated="true"]')).toBeVisible();
 
@@ -66,7 +70,9 @@ test.describe('Daedalabs Website', () => {
     await expect(searchInput).toHaveValue('');
   });
 
-  test('category filter pills and live/beta status badges are removed', async ({ page }) => {
+  test('category filter pills and live/beta status badges are removed', async ({
+    page,
+  }) => {
     await page.goto('/');
 
     // Category pills should NOT exist
@@ -83,7 +89,9 @@ test.describe('Daedalabs Website', () => {
     await expect(page.locator('option[value="live"]')).toHaveCount(0);
   });
 
-  test('URL query parameter (?category=byox) sets category filter state', async ({ page }) => {
+  test('URL query parameter (?category=byox) sets category filter state', async ({
+    page,
+  }) => {
     await page.goto('/?category=byox');
 
     // Active filter badge should be visible
@@ -122,7 +130,9 @@ test.describe('Daedalabs Website', () => {
     expect(homeOgRes.headers()['content-type']).toContain('image/png');
   });
 
-  test('API route /api/tools/[slug] returns 404 for unknown tool', async ({ request }) => {
+  test('API route /api/tools/[slug] returns 404 for unknown tool', async ({
+    request,
+  }) => {
     const res = await request.get('/api/tools/non-existent-tool');
     expect(res.status()).toBe(404);
     const json = await res.json();
@@ -162,7 +172,9 @@ test.describe('Daedalabs Website', () => {
     expect(json.event).toBe('ping');
   });
 
-  test('robots.txt returns correct crawl directives and sitemap link', async ({ request }) => {
+  test('robots.txt returns correct crawl directives and sitemap link', async ({
+    request,
+  }) => {
     const res = await request.get('/robots.txt');
     expect(res.ok()).toBeTruthy();
     const text = await res.text();
@@ -172,7 +184,9 @@ test.describe('Daedalabs Website', () => {
     expect(text).toContain('Sitemap: https://daedalabs.org/sitemap.xml');
   });
 
-  test('manifest.webmanifest is accessible and has proper structure', async ({ request }) => {
+  test('manifest.webmanifest is accessible and has proper structure', async ({
+    request,
+  }) => {
     const res = await request.get('/manifest.webmanifest');
     expect(res.ok()).toBeTruthy();
     const json = await res.json();
@@ -182,7 +196,9 @@ test.describe('Daedalabs Website', () => {
     expect(json.icons.length).toBeGreaterThan(0);
   });
 
-  test('homepage contains canonical link, RSS feed link, and valid JSON-LD structured data', async ({ page }) => {
+  test('homepage contains canonical link, RSS feed link, and valid JSON-LD structured data', async ({
+    page,
+  }) => {
     await page.goto('/');
 
     // Check canonical link
@@ -223,7 +239,9 @@ test.describe('Daedalabs Website', () => {
     expect(types).toContain('Organization');
   });
 
-  test('mouse scroll wheel navigates between hero and catalog smoothly', async ({ page }) => {
+  test('mouse scroll wheel navigates between hero and catalog smoothly', async ({
+    page,
+  }) => {
     await page.goto('/');
     await expect(page.locator('[data-hydrated="true"]')).toBeVisible();
 

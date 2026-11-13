@@ -56,13 +56,18 @@ export async function getAllTools(): Promise<UnifiedTool[]> {
       slug,
       name: entry.name,
       tagline: entry.tagline,
-      status: (entry.status as ToolItem['status']) || existingGithub?.status || 'experiment',
-      category: (entry.category as ToolItem['category']) || existingGithub?.category || 'other',
+      status:
+        (entry.status as ToolItem['status']) || existingGithub?.status || 'experiment',
+      category:
+        (entry.category as ToolItem['category']) || existingGithub?.category || 'other',
       tags: entry.tags && entry.tags.length > 0 ? entry.tags : existingGithub?.tags || [],
       githubUrl: entry.githubUrl || existingGithub?.githubUrl || null,
       demoUrl: entry.demoUrl || existingGithub?.demoUrl || null,
       npmUrl: entry.npmUrl || existingGithub?.npmUrl || null,
-      featured: entry.featured !== undefined && entry.featured !== null ? entry.featured : (existingGithub?.featured ?? false),
+      featured:
+        entry.featured !== undefined && entry.featured !== null
+          ? entry.featured
+          : (existingGithub?.featured ?? false),
       releaseDate: entry.releaseDate || existingGithub?.releaseDate || null,
       updatedAt: existingGithub?.updatedAt || null,
       stargazersCount: existingGithub?.stargazersCount || 0,
@@ -133,7 +138,10 @@ export async function getToolDetail(slug: string) {
     githubUrl: cmsTool?.githubUrl || base?.githubUrl || null,
     demoUrl: cmsTool?.demoUrl || base?.demoUrl || null,
     npmUrl: cmsTool?.npmUrl || null,
-    featured: cmsTool?.featured !== undefined && cmsTool?.featured !== null ? cmsTool.featured : (base?.featured ?? false),
+    featured:
+      cmsTool?.featured !== undefined && cmsTool?.featured !== null
+        ? cmsTool.featured
+        : (base?.featured ?? false),
     releaseDate: cmsTool?.releaseDate || base?.releaseDate || null,
     updatedAt: matchingRepo?.updated_at || null,
     stargazersCount: matchingRepo?.stargazers_count || 0,

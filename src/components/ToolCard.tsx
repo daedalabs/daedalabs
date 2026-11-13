@@ -1,9 +1,5 @@
 import Link from 'next/link';
-import {
-  ArrowUpRight,
-  ExternalLink,
-  Star,
-} from 'lucide-react';
+import { ArrowUpRight, ExternalLink, Star } from 'lucide-react';
 import { GithubIcon } from '@/components/icons/GithubIcon';
 
 export interface ToolItem {
@@ -11,7 +7,16 @@ export interface ToolItem {
   name: string;
   tagline: string;
   status: 'live' | 'beta' | 'experiment' | 'archived';
-  category: 'byox' | 'web' | 'cli' | 'library' | 'ai' | 'automation' | 'hardware' | 'microservice' | 'other';
+  category:
+    | 'byox'
+    | 'web'
+    | 'cli'
+    | 'library'
+    | 'ai'
+    | 'automation'
+    | 'hardware'
+    | 'microservice'
+    | 'other';
   tags: readonly string[];
   githubUrl?: string | null;
   demoUrl?: string | null;

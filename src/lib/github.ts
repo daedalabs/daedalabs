@@ -146,7 +146,9 @@ export async function getRepoReadme(
  */
 export function repoToToolItem(repo: GithubRepo) {
   // Infer category from topics, name, or language
-  let category: 'byox' | 'web' | 'cli' | 'library' | 'ai' | 'automation' | 'microservice' | 'other' = 'other';
+  let category:
+    'byox' | 'web' | 'cli' | 'library' | 'ai' | 'automation' | 'microservice' | 'other' =
+    'other';
   const topicsLower = repo.topics.map((t) => t.toLowerCase());
   const nameLower = repo.name.toLowerCase();
 
@@ -163,19 +165,47 @@ export function repoToToolItem(repo: GithubRepo) {
     category = 'byox';
   } else if (topicsLower.includes('cli') || topicsLower.includes('terminal')) {
     category = 'cli';
-  } else if (topicsLower.includes('web') || topicsLower.includes('nextjs') || topicsLower.includes('frontend')) {
+  } else if (
+    topicsLower.includes('web') ||
+    topicsLower.includes('nextjs') ||
+    topicsLower.includes('frontend')
+  ) {
     category = 'web';
-  } else if (topicsLower.includes('microservice') || topicsLower.includes('api') || topicsLower.includes('service')) {
+  } else if (
+    topicsLower.includes('microservice') ||
+    topicsLower.includes('api') ||
+    topicsLower.includes('service')
+  ) {
     category = 'microservice';
-  } else if (topicsLower.includes('ai') || topicsLower.includes('llm') || topicsLower.includes('machine-learning')) {
+  } else if (
+    topicsLower.includes('ai') ||
+    topicsLower.includes('llm') ||
+    topicsLower.includes('machine-learning')
+  ) {
     category = 'ai';
-  } else if (topicsLower.includes('library') || topicsLower.includes('sdk') || topicsLower.includes('package')) {
+  } else if (
+    topicsLower.includes('library') ||
+    topicsLower.includes('sdk') ||
+    topicsLower.includes('package')
+  ) {
     category = 'library';
-  } else if (topicsLower.includes('automation') || topicsLower.includes('bot') || topicsLower.includes('action')) {
+  } else if (
+    topicsLower.includes('automation') ||
+    topicsLower.includes('bot') ||
+    topicsLower.includes('action')
+  ) {
     category = 'automation';
-  } else if (repo.language === 'Rust' || repo.language === 'Go' || repo.language === 'Shell') {
+  } else if (
+    repo.language === 'Rust' ||
+    repo.language === 'Go' ||
+    repo.language === 'Shell'
+  ) {
     category = 'cli';
-  } else if (repo.language === 'TypeScript' || repo.language === 'JavaScript' || repo.language === 'HTML') {
+  } else if (
+    repo.language === 'TypeScript' ||
+    repo.language === 'JavaScript' ||
+    repo.language === 'HTML'
+  ) {
     category = 'web';
   }
 
@@ -183,7 +213,11 @@ export function repoToToolItem(repo: GithubRepo) {
   let status: 'live' | 'beta' | 'experiment' | 'archived' = 'experiment';
   if (repo.archived) {
     status = 'archived';
-  } else if (topicsLower.includes('live') || topicsLower.includes('production') || topicsLower.includes('stable')) {
+  } else if (
+    topicsLower.includes('live') ||
+    topicsLower.includes('production') ||
+    topicsLower.includes('stable')
+  ) {
     status = 'live';
   } else if (topicsLower.includes('beta') || topicsLower.includes('wip')) {
     status = 'beta';

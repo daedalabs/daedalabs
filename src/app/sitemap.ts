@@ -11,8 +11,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     lastModified: tool.updatedAt
       ? new Date(tool.updatedAt)
       : tool.releaseDate
-      ? new Date(tool.releaseDate)
-      : new Date(),
+        ? new Date(tool.releaseDate)
+        : new Date(),
     changeFrequency: 'weekly' as const,
     priority: 0.8,
     images: [`${siteUrl}/tools/${tool.slug}/opengraph-image`],
