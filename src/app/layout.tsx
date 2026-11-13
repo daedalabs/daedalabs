@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://daedalabs.org'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://daedalabs.tech'),
   title: {
     default: 'daedalabs',
     template: '%s · daedalabs',
