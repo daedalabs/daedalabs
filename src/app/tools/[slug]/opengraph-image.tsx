@@ -1,6 +1,7 @@
 import { ImageResponse } from 'next/og';
 import { getToolDetail } from '@/lib/tools';
 
+export const alt = 'daedalabs project preview';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
