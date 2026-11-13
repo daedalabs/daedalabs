@@ -69,6 +69,7 @@ export async function getAllTools(): Promise<UnifiedTool[]> {
           ? entry.featured
           : (existingGithub?.featured ?? false),
       releaseDate: entry.releaseDate || existingGithub?.releaseDate || null,
+      updatedAt: existingGithub?.updatedAt || null,
       stargazersCount: existingGithub?.stargazersCount || 0,
       forksCount: existingGithub?.forksCount || 0,
       isFromGithub: !!existingGithub,
@@ -142,6 +143,7 @@ export async function getToolDetail(slug: string) {
         ? cmsTool.featured
         : (base?.featured ?? false),
     releaseDate: cmsTool?.releaseDate || base?.releaseDate || null,
+    updatedAt: matchingRepo?.updated_at || null,
     stargazersCount: matchingRepo?.stargazers_count || 0,
     forksCount: matchingRepo?.forks_count || 0,
     isFromGithub: !!matchingRepo,

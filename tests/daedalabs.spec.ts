@@ -171,4 +171,101 @@ test.describe('Daedalabs Website', () => {
     expect(json.received).toBe(true);
     expect(json.event).toBe('ping');
   });
+
+  test('robots.txt returns correct crawl directives and sitemap link', async ({ request }) => {
+    const res = await request.get('/robots.txt');
+    expect(res.ok()).toBeTruthy();
+    const text = await res.text();
+    expect(text).toContain('User-Agent: *');
+    expect(text).toContain('Disallow: /api/');
+    expect(text).toContain('Disallow: /keystatic/');
+    expect(text).toContain('Sitemap: https://daedalabs.org/sitemap.xml');
+  });
+
+  test('manifest.webmanifest is accessible and has proper structure', async ({ request }) => {
+    const res = await request.get('/manifest.webmanifest');
+    expect(res.ok()).toBeTruthy();
+    const json = await res.json();
+    expect(json.name).toBe('daedalabs');
+    expect(json.start_url).toBe('/');
+    expect(Array.isArray(json.icons)).toBe(true);
+    expect(json.icons.length).toBeGreaterThan(0);
+  });
+
+  test('homepage contains canonical link, RSS feed link, and valid JSON-LD structured data', async ({ page }) => {
+    await page.goto('/');
+
+    // Check canonical link
+    const canonical = page.locator('link[rel="canonical"]');
+    await expect(canonical).toHaveAttribute('href', /https:\/\/daedalabs\.org\/?/);
+
+    // Check RSS feed auto-discovery link in head
+    const rssLink = page.locator('head link[type="application/rss+xml"]');
+    await expect(rssLink).toHaveAttribute('href', '/feed.xml');
+
+    // Check robots meta tag
+    const robotsMeta = page.locator('meta[name="robots"]');
+    await expect(robotsMeta).toHaveAttribute('content', /index,\s*follow/);
+
+    // Check keywords meta tag
+    const keywordsMeta = page.locator('meta[name="keywords"]');
+    await expect(keywordsMeta).toHaveAttribute('content', /open source/i);
+
+    // Check OpenGraph meta tags
+    const ogTitle = page.locator('meta[property="og:title"]');
+    await expect(ogTitle).toHaveAttribute('content', /daedalabs/i);
+
+    // Check JSON-LD structured data scripts
+    const jsonLdScripts = page.locator('script[type="application/ld+json"]');
+    const count = await jsonLdScripts.count();
+    expect(count).toBeGreaterThanOrEqual(2);
+
+    const jsonContents = [];
+    for (let i = 0; i < count; i++) {
+      const text = await jsonLdScripts.nth(i).textContent();
+      if (text) {
+        jsonContents.push(JSON.parse(text));
+      }
+    }
+
+    const types = jsonContents.map((j) => j['@type']);
+    expect(types).toContain('WebSite');
+    expect(types).toContain('Organization');
+  });
+
+  test('mouse scroll wheel navigates between hero and catalog smoothly', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('[data-hydrated="true"]')).toBeVisible();
+
+    // Initially at top of page
+    const initialScrollY = await page.evaluate(() => window.scrollY);
+    expect(initialScrollY).toBe(0);
+
+    // Roll mouse wheel down one notch
+    await page.mouse.wheel(0, 100);
+
+    // Should smoothly scroll towards catalog dock position
+    await expect
+      .poll(async () => page.evaluate(() => window.scrollY), {
+        timeout: 5000,
+        intervals: [100, 200, 300],
+      })
+      .toBeGreaterThan(300);
+
+    // Wait for snap animation to finish settling at dock
+    await page.waitForTimeout(600);
+    const dockedScrollY = await page.evaluate(() => window.scrollY);
+    expect(dockedScrollY).toBeGreaterThan(400);
+
+    // Roll mouse wheel up one notch from dock
+    await page.mouse.wheel(0, -100);
+
+    // Should smoothly scroll back to top of the hero
+    await expect
+      .poll(async () => page.evaluate(() => window.scrollY), {
+        timeout: 5000,
+        intervals: [100, 200, 300],
+      })
+      .toBeLessThan(50);
+  });
 });

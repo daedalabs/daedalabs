@@ -10,6 +10,9 @@ export interface SiteSettings {
   year: number;
 }
 
+export const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') || 'https://daedalabs.org';
+
 const DEFAULTS: Omit<SiteSettings, 'year'> = {
   name: 'daedalabs',
   headline: 'Capable open source tools.',

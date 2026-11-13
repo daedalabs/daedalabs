@@ -5,7 +5,7 @@ import { cacheLife, cacheTag } from 'next/cache';
 import { DocumentRenderer } from '@keystatic/core/renderer';
 import { ArrowLeft, ArrowUpRight, GitFork, Star } from 'lucide-react';
 import { getAllTools, getToolDetail } from '@/lib/tools';
-import { getSiteSettings } from '@/lib/site';
+import { getSiteSettings, SITE_URL } from '@/lib/site';
 import { SiteHeader } from '@/components/SiteHeader';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Footer } from '@/components/Footer';
@@ -30,23 +30,51 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   cacheTag('github-repos', `github-tool-${slug}`);
   const detail = await getToolDetail(slug);
   if (!detail) {
-    return { title: 'Project not found' };
+    return {
+      title: 'Project not found',
+      robots: { index: false, follow: false },
+    };
   }
 
   const { tool } = detail;
+  const toolUrl = `${SITE_URL}/tools/${slug}`;
+  const keywords = Array.from(
+    new Set([
+      tool.name,
+      categoryLabels[tool.category] ?? tool.category,
+      ...tool.tags,
+      'open source',
+      'developer tool',
+      'daedalabs',
+    ])
+  );
+
   return {
     title: tool.name,
     description: tool.tagline,
+    keywords,
+    alternates: {
+      canonical: toolUrl,
+    },
+    authors: [{ name: 'juhenes', url: 'https://github.com/juhenes' }],
     openGraph: {
       title: `${tool.name} · daedalabs`,
       description: tool.tagline,
-      url: `/tools/${slug}`,
-      type: 'website',
+      url: toolUrl,
+      siteName: 'daedalabs',
+      locale: 'en_US',
+      type: 'article',
+      ...(tool.releaseDate ? { publishedTime: tool.releaseDate } : {}),
+      tags: [...tool.tags],
     },
     twitter: {
       card: 'summary_large_image',
       title: `${tool.name} · daedalabs`,
       description: tool.tagline,
+    },
+    robots: {
+      index: true,
+      follow: true,
     },
   };
 }
@@ -68,19 +96,83 @@ export default async function ToolDetailPage({ params }: PageProps) {
   const category = categoryLabels[tool.category] ?? categoryLabels.other;
   const otherTools = allTools.filter((entry) => entry.slug !== slug).slice(0, 4);
 
+  const jsonLd = [
+    {
+      '@context': 'https://schema.org',
+      '@type': ['SoftwareApplication', 'SoftwareSourceCode'],
+      '@id': `${SITE_URL}/tools/${slug}#software`,
+      name: tool.name,
+      headline: tool.tagline,
+      description: tool.tagline,
+      applicationCategory: category,
+      operatingSystem: 'Cross-platform',
+      url: `${SITE_URL}/tools/${slug}`,
+      ...(tool.githubUrl ? { codeRepository: tool.githubUrl } : {}),
+      ...(tool.tags && tool.tags.length > 0 ? { programmingLanguage: tool.tags } : {}),
+      ...(tool.releaseDate ? { datePublished: tool.releaseDate } : {}),
+      author: {
+        '@type': 'Person',
+        name: site.authorName,
+        url: site.authorUrl,
+      },
+      publisher: {
+        '@type': 'Organization',
+        '@id': `${SITE_URL}/#organization`,
+        name: site.name,
+        url: SITE_URL,
+      },
+      offers: {
+        '@type': 'Offer',
+        price: '0',
+        priceCurrency: 'USD',
+        availability: 'https://schema.org/InStock',
+      },
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        {
+          '@type': 'ListItem',
+          position: 1,
+          name: 'Home',
+          item: SITE_URL,
+        },
+        {
+          '@type': 'ListItem',
+          position: 2,
+          name: 'Projects',
+          item: `${SITE_URL}/#tools`,
+        },
+        {
+          '@type': 'ListItem',
+          position: 3,
+          name: tool.name,
+          item: `${SITE_URL}/tools/${slug}`,
+        },
+      ],
+    },
+  ];
+
   return (
     <div className="flex min-h-screen flex-col bg-canvas text-ink">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <SiteHeader siteName={site.name} githubOrg={site.githubOrg} />
       <ThemeToggle />
 
       <main className="mx-auto w-full max-w-5xl flex-1 px-5 pb-24 pt-24 sm:px-8 sm:pt-28">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1.5 text-[12px] font-medium text-ink-dim transition-colors hover:text-ink"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
-          <span>All projects</span>
-        </Link>
+        <nav aria-label="Breadcrumb">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 text-[12px] font-medium text-ink-dim transition-colors hover:text-ink"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+            <span>All projects</span>
+          </Link>
+        </nav>
 
         <header className="mt-8 border-b border-line pb-8">
           <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim">

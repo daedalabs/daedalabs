@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { DaedalabsMark } from '@/components/icons/DaedalabsMark';
 
 interface FooterProps {
@@ -25,17 +26,31 @@ export function Footer({
           <span>© {year}</span>
         </span>
 
-        <span>
-          made by{' '}
-          <a
-            href={authorUrl}
-            target="_blank"
-            rel="noreferrer"
+        <div className="flex items-center gap-3">
+          <Link
+            href="/feed.xml"
+            prefetch={false}
             className="text-ink-muted underline decoration-line-strong underline-offset-2 transition-colors hover:text-ink"
+            title="RSS feed"
+            aria-label="RSS Feed"
           >
-            {authorName}
-          </a>
-        </span>
+            rss
+          </Link>
+          <span aria-hidden="true" className="text-line-strong">
+            ·
+          </span>
+          <span>
+            made by{' '}
+            <a
+              href={authorUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-ink-muted underline decoration-line-strong underline-offset-2 transition-colors hover:text-ink"
+            >
+              {authorName}
+            </a>
+          </span>
+        </div>
       </div>
     </footer>
   );

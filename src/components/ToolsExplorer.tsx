@@ -1,5 +1,7 @@
 'use client';
 
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import Link from 'next/link';
 import {
   useCallback,
   useEffect,
@@ -188,6 +190,11 @@ export function ToolsExplorer({ initialTools, site }: ToolsExplorerProps) {
   const heroSectionRef = useRef<HTMLElement>(null);
   const heroContentRef = useRef<HTMLDivElement>(null);
   const isSnappingRef = useRef(false);
+  const targetYRef = useRef<number | null>(null);
+  const lastDirectionRef = useRef<'down' | 'up' | null>(null);
+  const lastScrollYRef = useRef(0);
+  const isTrackpadRef = useRef(false);
+  const gestureTimerRef = useRef<number | null>(null);
   const isUserTouchingRef = useRef(false);
   const animFrameRef = useRef<number | null>(null);
   const snapToRef = useRef<((targetY: number, duration?: number) => void) | null>(null);
@@ -271,16 +278,19 @@ export function ToolsExplorer({ initialTools, site }: ToolsExplorerProps) {
       if (Math.abs(distance) < 2) {
         window.scrollTo(0, targetY);
         isSnappingRef.current = false;
+        targetYRef.current = null;
         return;
       }
 
       isSnappingRef.current = true;
+      targetYRef.current = targetY;
       const startTime = performance.now();
       const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
 
       const step = (now: number) => {
         if (!isSnappingRef.current) {
           animFrameRef.current = null;
+          targetYRef.current = null;
           return;
         }
 
@@ -297,6 +307,7 @@ export function ToolsExplorer({ initialTools, site }: ToolsExplorerProps) {
           window.scrollTo(0, targetY);
           setTimeout(() => {
             isSnappingRef.current = false;
+            targetYRef.current = null;
           }, 80);
         }
       };
@@ -319,8 +330,15 @@ export function ToolsExplorer({ initialTools, site }: ToolsExplorerProps) {
       // Only snap if currently stopped in the overlap between hero and catalog
       if (scrollY <= 8 || scrollY >= dock - 8) return;
 
-      // Deterministic threshold: past 45% of the transition, snap to dock; otherwise return to top
-      const target = scrollY > dock * 0.45 ? dock : 0;
+      let target: number;
+      if (lastDirectionRef.current === 'down') {
+        target = scrollY >= Math.min(80, dock * 0.15) ? dock : 0;
+      } else if (lastDirectionRef.current === 'up') {
+        target = scrollY <= Math.max(dock - 80, dock * 0.85) ? 0 : dock;
+      } else {
+        target = scrollY > dock * 0.45 ? dock : 0;
+      }
+
       snapTo(target, 400);
     };
 
@@ -336,6 +354,12 @@ export function ToolsExplorer({ initialTools, site }: ToolsExplorerProps) {
         lastScrolled = scrolled;
         setIsScrolled(scrolled);
       }
+
+      const diff = scrollY - lastScrollYRef.current;
+      if (Math.abs(diff) >= 2) {
+        lastDirectionRef.current = diff > 0 ? 'down' : 'up';
+      }
+      lastScrollYRef.current = scrollY;
 
       const progress = Math.min(1, Math.max(0, scrollY / Math.max(1, heroHeight)));
       if (heroContentRef.current) {
@@ -364,6 +388,7 @@ export function ToolsExplorer({ initialTools, site }: ToolsExplorerProps) {
       isUserTouchingRef.current = true;
       if (isSnappingRef.current) {
         isSnappingRef.current = false;
+        targetYRef.current = null;
         if (animFrameRef.current !== null) {
           cancelAnimationFrame(animFrameRef.current);
           animFrameRef.current = null;
@@ -382,12 +407,62 @@ export function ToolsExplorer({ initialTools, site }: ToolsExplorerProps) {
     };
 
     const onWheel = (e: WheelEvent) => {
-      // Yield control if user intentionally scrolls against the active snap animation
-      if (isSnappingRef.current && Math.abs(e.deltaY) > 14) {
-        isSnappingRef.current = false;
-        if (animFrameRef.current !== null) {
-          cancelAnimationFrame(animFrameRef.current);
-          animFrameRef.current = null;
+      // 1. Gesture detection: Trackpad vs discrete mouse wheel detents
+      if (gestureTimerRef.current !== null) {
+        window.clearTimeout(gestureTimerRef.current);
+      }
+      gestureTimerRef.current = window.setTimeout(() => {
+        gestureTimerRef.current = null;
+        isTrackpadRef.current = false;
+      }, 160);
+
+      if (!isTrackpadRef.current) {
+        const isLineOrPage = e.deltaMode !== 0;
+        const isFractional = !Number.isInteger(e.deltaY) || !Number.isInteger(e.deltaX);
+        const hasHorizontal = Math.abs(e.deltaX) > 0.1;
+        const isSmallDelta = Math.abs(e.deltaY) < 40;
+
+        if (!isLineOrPage && (isFractional || hasHorizontal || isSmallDelta)) {
+          isTrackpadRef.current = true;
+        }
+      }
+
+      // 2. Cancellation check: Only yield control if user intentionally scrolls against active snap
+      if (isSnappingRef.current && targetYRef.current !== null) {
+        const isMovingDown = targetYRef.current > window.scrollY;
+        const isOpposing = isMovingDown ? e.deltaY < -12 : e.deltaY > 12;
+
+        if (isOpposing) {
+          isSnappingRef.current = false;
+          targetYRef.current = null;
+          if (animFrameRef.current !== null) {
+            cancelAnimationFrame(animFrameRef.current);
+            animFrameRef.current = null;
+          }
+        }
+      }
+
+      // 3. Discrete mouse wheel navigation in the hero-to-catalog transition region
+      if (!isTrackpadRef.current) {
+        const scrollY = window.scrollY;
+        const dock = Math.max(0, heroHeight - HEADER_OFFSET);
+
+        // Case A: At or near the hero, scrolling down
+        if (e.deltaY > 0 && scrollY < dock - 2) {
+          e.preventDefault();
+          if (isSnappingRef.current && targetYRef.current === dock) return;
+          lastDirectionRef.current = 'down';
+          snapTo(dock, 400);
+          return;
+        }
+
+        // Case B: At the catalog top boundary, scrolling up into the hero
+        if (e.deltaY < 0 && scrollY <= dock + 2 && scrollY > 8) {
+          e.preventDefault();
+          if (isSnappingRef.current && targetYRef.current === 0) return;
+          lastDirectionRef.current = 'up';
+          snapTo(0, 400);
+          return;
         }
       }
     };
@@ -399,7 +474,7 @@ export function ToolsExplorer({ initialTools, site }: ToolsExplorerProps) {
 
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onResize);
-    window.addEventListener('wheel', onWheel, { passive: true });
+    window.addEventListener('wheel', onWheel, { passive: false });
     window.addEventListener('touchstart', onTouchStart, { passive: true });
     window.addEventListener('touchend', onTouchEnd, { passive: true });
     window.addEventListener('touchcancel', onTouchEnd, { passive: true });
@@ -424,6 +499,7 @@ export function ToolsExplorer({ initialTools, site }: ToolsExplorerProps) {
       if (frame !== null) cancelAnimationFrame(frame);
       if (animFrameRef.current !== null) cancelAnimationFrame(animFrameRef.current);
       if (snapTimer !== null) clearTimeout(snapTimer);
+      if (gestureTimerRef.current !== null) clearTimeout(gestureTimerRef.current);
       snapToRef.current = null;
     };
   }, []);
@@ -432,6 +508,7 @@ export function ToolsExplorer({ initialTools, site }: ToolsExplorerProps) {
   const scrollToTools = useCallback(() => {
     const heroH = heroSectionRef.current?.offsetHeight || window.innerHeight;
     const dock = Math.max(0, heroH - HEADER_OFFSET);
+    lastDirectionRef.current = 'down';
     if (snapToRef.current) {
       snapToRef.current(dock, 480);
     } else {
@@ -780,9 +857,24 @@ export function ToolsExplorer({ initialTools, site }: ToolsExplorerProps) {
                       </span>
 
                       <div className="flex min-w-0 flex-1 flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-3">
-                        <span className="shrink-0 text-[13px] font-medium text-ink">
+                        <Link
+                          href={`/tools/${tool.slug}`}
+                          onClick={(event) => {
+                            if (
+                              !event.metaKey &&
+                              !event.ctrlKey &&
+                              !event.shiftKey &&
+                              !event.altKey &&
+                              event.button === 0
+                            ) {
+                              event.preventDefault();
+                              handleSelectTool(tool);
+                            }
+                          }}
+                          className="shrink-0 text-[13px] font-medium text-ink transition-colors hover:text-accent focus-visible:underline"
+                        >
                           {tool.name}
-                        </span>
+                        </Link>
                         <span className="truncate text-[12px] text-ink-muted">
                           {tool.tagline}
                         </span>
