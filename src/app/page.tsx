@@ -2,14 +2,88 @@ import type { Metadata } from 'next';
 import { cacheLife, cacheTag } from 'next/cache';
 import { getAllTools } from '@/lib/tools';
 import { getSiteSettings, SITE_URL } from '@/lib/site';
+import { categoryLabels } from '@/components/ToolCard';
 import { Footer } from '@/components/Footer';
 import { ToolsExplorer } from '@/components/ToolsExplorer';
 
-export const metadata: Metadata = {
-  alternates: {
-    canonical: '/',
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  'use cache';
+  cacheLife('minutes');
+  cacheTag('github-repos');
+  const [site, tools] = await Promise.all([getSiteSettings(), getAllTools()]);
+  const siteUrl = SITE_URL;
+
+  const toolNames = tools.map((t) => t.name);
+  const toolTags = tools.flatMap((t) => t.tags);
+  const toolCategories = Array.from(
+    new Set(tools.map((t) => categoryLabels[t.category] ?? t.category))
+  );
+
+  const keywords = Array.from(
+    new Set([
+      'daedalabs',
+      'open source',
+      'developer tools',
+      'cli tools',
+      'software systems',
+      'build your own',
+      'experiments',
+      ...toolNames,
+      ...toolCategories,
+      ...toolTags,
+    ])
+  );
+
+  const toolSummary =
+    tools.length > 0
+      ? ` Featuring ${tools.length} open-source tool${tools.length === 1 ? '' : 's'}: ${tools
+          .slice(0, 8)
+          .map((t) => t.name)
+          .join(', ')}${tools.length > 8 ? ', and more' : ''}.`
+      : '';
+  const description = `${site.description}${toolSummary}`;
+
+  return {
+    title: `${site.name} · Capable open source tools`,
+    description,
+    keywords,
+    alternates: {
+      canonical: '/',
+    },
+    openGraph: {
+      title: `${site.name} · Capable open source tools`,
+      description,
+      url: siteUrl,
+      siteName: site.name,
+      type: 'website',
+      images: [
+        {
+          url: `${siteUrl}/opengraph-image`,
+          width: 1200,
+          height: 630,
+          alt: `${site.name} open source tools catalog`,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${site.name} · Capable open source tools`,
+      description,
+      images: [`${siteUrl}/opengraph-image`],
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        'max-video-preview': -1,
+        'max-image-preview': 'large',
+        'max-snippet': -1,
+      },
+    },
+  };
+}
 
 export default async function HomePage() {
   'use cache';
@@ -68,7 +142,30 @@ export default async function HomePage() {
             position: index + 1,
             url: `${SITE_URL}/tools/${tool.slug}`,
             name: tool.name,
-            description: tool.tagline,
+            item: {
+              '@type': ['SoftwareApplication', 'SoftwareSourceCode'],
+              name: tool.name,
+              description: tool.tagline,
+              url: `${SITE_URL}/tools/${tool.slug}`,
+              applicationCategory: categoryLabels[tool.category] ?? tool.category,
+              operatingSystem: 'Cross-platform',
+              ...(tool.githubUrl ? { codeRepository: tool.githubUrl } : {}),
+              ...(tool.tags && tool.tags.length > 0
+                ? { programmingLanguage: tool.tags }
+                : {}),
+              ...(tool.license ? { license: tool.license } : {}),
+              ...(tool.stargazersCount !== undefined
+                ? {
+                    interactionStatistic: [
+                      {
+                        '@type': 'InteractionCounter',
+                        interactionType: 'https://schema.org/LikeAction',
+                        userInteractionCount: tool.stargazersCount,
+                      },
+                    ],
+                  }
+                : {}),
+            },
           })),
         }
       : null;

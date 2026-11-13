@@ -5,6 +5,7 @@ import { cacheLife, cacheTag } from 'next/cache';
 import { ArrowLeft, ArrowUpRight, GitFork, Star } from 'lucide-react';
 import { getAllTools, getToolDetail } from '@/lib/tools';
 import { getSiteSettings, SITE_URL } from '@/lib/site';
+import { extractSummaryFromReadme } from '@/lib/github';
 import { SiteHeader } from '@/components/SiteHeader';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Footer } from '@/components/Footer';
@@ -35,22 +36,40 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
-  const { tool } = detail;
+  const { tool, readmeMarkdown } = detail;
   const toolUrl = `${SITE_URL}/tools/${slug}`;
+
+  // Rich description: prefer repo description; fallback to extracted README summary from repo
+  const readmeSummary = extractSummaryFromReadme(readmeMarkdown);
+  const description =
+    tool.tagline && !tool.tagline.startsWith('Open-source')
+      ? tool.tagline
+      : readmeSummary || tool.tagline || `Open source ${tool.name} tool by daedalabs.`;
+
+  const categoryLabel = categoryLabels[tool.category] ?? tool.category;
+
   const keywords = Array.from(
-    new Set([
-      tool.name,
-      categoryLabels[tool.category] ?? tool.category,
-      ...tool.tags,
-      'open source',
-      'developer tool',
-      'daedalabs',
-    ])
+    new Set(
+      [
+        tool.name,
+        slug,
+        categoryLabel,
+        ...tool.tags,
+        tool.primaryLanguage || '',
+        'open source',
+        'developer tool',
+        'github repository',
+        'source code',
+        'daedalabs',
+      ].filter(Boolean)
+    )
   );
 
+  const title = `${tool.name} – ${tool.tagline || categoryLabel}`;
+
   return {
-    title: tool.name,
-    description: tool.tagline,
+    title,
+    description,
     keywords,
     alternates: {
       canonical: toolUrl,
@@ -58,22 +77,39 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     authors: [{ name: 'juhenes', url: 'https://github.com/juhenes' }],
     openGraph: {
       title: `${tool.name} · daedalabs`,
-      description: tool.tagline,
+      description,
       url: toolUrl,
       siteName: 'daedalabs',
       locale: 'en_US',
       type: 'article',
       ...(tool.releaseDate ? { publishedTime: tool.releaseDate } : {}),
+      ...(tool.updatedAt ? { modifiedTime: tool.updatedAt } : {}),
       tags: [...tool.tags],
+      images: [
+        {
+          url: `${toolUrl}/opengraph-image`,
+          width: 1200,
+          height: 630,
+          alt: `${tool.name} – ${description}`,
+        },
+      ],
     },
     twitter: {
       card: 'summary_large_image',
       title: `${tool.name} · daedalabs`,
-      description: tool.tagline,
+      description,
+      images: [`${toolUrl}/opengraph-image`],
     },
     robots: {
       index: true,
       follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        'max-video-preview': -1,
+        'max-image-preview': 'large',
+        'max-snippet': -1,
+      },
     },
   };
 }
@@ -91,9 +127,15 @@ export default async function ToolDetailPage({ params }: PageProps) {
 
   if (!detail) notFound();
 
-  const { tool, readmeHtml } = detail;
+  const { tool, readmeHtml, readmeMarkdown } = detail;
   const category = categoryLabels[tool.category] ?? categoryLabels.other;
   const otherTools = allTools.filter((entry) => entry.slug !== slug).slice(0, 4);
+
+  const readmeSummary = extractSummaryFromReadme(readmeMarkdown);
+  const richDescription =
+    tool.tagline && !tool.tagline.startsWith('Open-source')
+      ? tool.tagline
+      : readmeSummary || tool.tagline;
 
   const jsonLd = [
     {
@@ -102,13 +144,36 @@ export default async function ToolDetailPage({ params }: PageProps) {
       '@id': `${SITE_URL}/tools/${slug}#software`,
       name: tool.name,
       headline: tool.tagline,
-      description: tool.tagline,
+      description: richDescription,
       applicationCategory: category,
       operatingSystem: 'Cross-platform',
       url: `${SITE_URL}/tools/${slug}`,
       ...(tool.githubUrl ? { codeRepository: tool.githubUrl } : {}),
       ...(tool.tags && tool.tags.length > 0 ? { programmingLanguage: tool.tags } : {}),
+      ...(tool.primaryLanguage ? { runtimePlatform: tool.primaryLanguage } : {}),
       ...(tool.releaseDate ? { datePublished: tool.releaseDate } : {}),
+      ...(tool.updatedAt ? { dateModified: tool.updatedAt } : {}),
+      ...(tool.license ? { license: tool.license } : {}),
+      ...(tool.stargazersCount !== undefined
+        ? {
+            interactionStatistic: [
+              {
+                '@type': 'InteractionCounter',
+                interactionType: 'https://schema.org/LikeAction',
+                userInteractionCount: tool.stargazersCount,
+              },
+              ...(tool.forksCount !== undefined
+                ? [
+                    {
+                      '@type': 'InteractionCounter',
+                      interactionType: 'https://schema.org/ForkAction',
+                      userInteractionCount: tool.forksCount,
+                    },
+                  ]
+                : []),
+            ],
+          }
+        : {}),
       author: {
         '@type': 'Person',
         name: site.authorName,
