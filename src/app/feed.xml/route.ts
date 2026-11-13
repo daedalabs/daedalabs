@@ -1,5 +1,6 @@
 import { getAllTools } from '@/lib/tools';
 import { reader } from '@/lib/keystatic';
+import { SITE_URL } from '@/lib/site';
 
 function escapeXml(str: string): string {
   return str
@@ -21,7 +22,7 @@ export async function GET() {
     getAllTools(),
   ]);
 
-  const siteUrl = 'https://daedalabs.org';
+  const siteUrl = SITE_URL;
   const siteName = siteSettings?.name || 'Daedalabs';
   const siteDesc =
     siteSettings?.description ||
