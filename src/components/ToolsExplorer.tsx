@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import Link from 'next/link';
 import {
   ArrowDown,
   LayoutGrid,
@@ -758,9 +759,24 @@ export function ToolsExplorer({ initialTools, site }: ToolsExplorerProps) {
                       </span>
 
                       <div className="flex min-w-0 flex-1 flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-3">
-                        <span className="shrink-0 text-[13px] font-medium text-ink">
+                        <Link
+                          href={`/tools/${tool.slug}`}
+                          onClick={(event) => {
+                            if (
+                              !event.metaKey &&
+                              !event.ctrlKey &&
+                              !event.shiftKey &&
+                              !event.altKey &&
+                              event.button === 0
+                            ) {
+                              event.preventDefault();
+                              handleSelectTool(tool);
+                            }
+                          }}
+                          className="shrink-0 text-[13px] font-medium text-ink transition-colors hover:text-accent focus-visible:underline"
+                        >
                           {tool.name}
-                        </span>
+                        </Link>
                         <span className="truncate text-[12px] text-ink-muted">
                           {tool.tagline}
                         </span>

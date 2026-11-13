@@ -22,6 +22,20 @@ export const metadata: Metadata = {
   },
   description:
     'A repository of open tools by juhenes: build-your-own experiments, CLI utilities, and software systems.',
+  keywords: [
+    'daedalabs',
+    'open source',
+    'developer tools',
+    'cli tools',
+    'software systems',
+    'build your own',
+    'experiments',
+    'juhenes',
+    'programming',
+  ],
+  authors: [{ name: 'juhenes', url: 'https://github.com/juhenes' }],
+  creator: 'juhenes',
+  publisher: 'daedalabs',
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: 'any' },
@@ -42,6 +56,17 @@ export const metadata: Metadata = {
     description:
       'A repository of open tools by juhenes: build-your-own experiments, CLI utilities, and software systems.',
   },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
 };
 
 export default function RootLayout({
@@ -57,6 +82,12 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full bg-canvas text-ink antialiased`}
     >
       <head>
+        <link
+          rel="alternate"
+          type="application/rss+xml"
+          title="daedalabs RSS Feed"
+          href="/feed.xml"
+        />
         <script
           dangerouslySetInnerHTML={{
             __html:

@@ -210,6 +210,7 @@ export function repoToToolItem(repo: GithubRepo) {
     npmUrl: null,
     featured: topicsLower.includes('featured'),
     releaseDate: repo.created_at ? repo.created_at.split('T')[0] : null,
+    updatedAt: repo.updated_at || null,
     isFromGithub: true,
   };
 }

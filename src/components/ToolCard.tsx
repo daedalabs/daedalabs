@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import {
   ArrowUpRight,
   ExternalLink,
@@ -17,6 +18,7 @@ export interface ToolItem {
   npmUrl?: string | null;
   featured?: boolean;
   releaseDate?: string | null;
+  updatedAt?: string | null;
   stargazersCount?: number;
   forksCount?: number;
   isFromGithub?: boolean;
@@ -51,7 +53,7 @@ export function ToolCard({ tool, onSelect }: ToolCardProps) {
   const stars = tool.stargazersCount ?? 0;
 
   return (
-    <article className="group relative flex h-full flex-col rounded-lg border border-line bg-surface/40 p-4 transition-colors duration-200 hover:border-line-strong hover:bg-surface has-[button[data-card-trigger]:focus-visible]:border-line-strong has-[button[data-card-trigger]:focus-visible]:bg-surface has-[button[data-card-trigger]:focus-visible]:ring-1 has-[button[data-card-trigger]:focus-visible]:ring-accent/40">
+    <article className="group relative flex h-full flex-col rounded-lg border border-line bg-surface/40 p-4 transition-colors duration-200 hover:border-line-strong hover:bg-surface has-[[data-card-trigger]:focus-visible]:border-line-strong has-[[data-card-trigger]:focus-visible]:bg-surface has-[[data-card-trigger]:focus-visible]:ring-1 has-[[data-card-trigger]:focus-visible]:ring-accent/40">
       <div className="flex items-center justify-between gap-3">
         <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-dim">
           {category}
@@ -94,15 +96,26 @@ export function ToolCard({ tool, onSelect }: ToolCardProps) {
 
       <h3 className="mt-3 text-[15px] font-semibold leading-snug tracking-[-0.01em] text-ink">
         {onSelect ? (
-          <button
-            type="button"
+          <Link
+            href={`/tools/${tool.slug}`}
             data-card-trigger
-            onClick={() => onSelect(tool)}
+            onClick={(event) => {
+              if (
+                !event.metaKey &&
+                !event.ctrlKey &&
+                !event.shiftKey &&
+                !event.altKey &&
+                event.button === 0
+              ) {
+                event.preventDefault();
+                onSelect(tool);
+              }
+            }}
             aria-label={`Read ${tool.name} documentation`}
             className="text-left font-semibold after:absolute after:inset-0 after:z-0 after:rounded-lg after:content-[''] focus-visible:outline-none"
           >
             {tool.name}
-          </button>
+          </Link>
         ) : (
           tool.name
         )}
