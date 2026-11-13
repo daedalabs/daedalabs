@@ -2,7 +2,6 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { cacheLife, cacheTag } from 'next/cache';
-import { DocumentRenderer } from '@keystatic/core/renderer';
 import { ArrowLeft, ArrowUpRight, GitFork, Star } from 'lucide-react';
 import { getAllTools, getToolDetail } from '@/lib/tools';
 import { getSiteSettings, SITE_URL } from '@/lib/site';
@@ -92,7 +91,7 @@ export default async function ToolDetailPage({ params }: PageProps) {
 
   if (!detail) notFound();
 
-  const { tool, contentAST, readmeHtml } = detail;
+  const { tool, readmeHtml } = detail;
   const category = categoryLabels[tool.category] ?? categoryLabels.other;
   const otherTools = allTools.filter((entry) => entry.slug !== slug).slice(0, 4);
 
@@ -260,11 +259,7 @@ export default async function ToolDetailPage({ params }: PageProps) {
         <div className="mt-10 grid gap-12 lg:grid-cols-[minmax(0,1fr)_13rem] lg:gap-14">
           <div className="min-w-0">
             <CodeBlockEnhancer />
-            {contentAST ? (
-              <article className="prose-dl max-w-[70ch]">
-                <DocumentRenderer document={contentAST} />
-              </article>
-            ) : readmeHtml ? (
+            {readmeHtml ? (
               <article
                 className="prose-dl max-w-[70ch]"
                 dangerouslySetInnerHTML={{ __html: readmeHtml }}

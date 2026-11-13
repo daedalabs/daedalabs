@@ -1,4 +1,4 @@
-import { reader } from '@/lib/keystatic';
+import siteSettings from '@/content/settings.json';
 
 export interface SiteSettings {
   name: string;
@@ -24,21 +24,17 @@ const DEFAULTS: Omit<SiteSettings, 'year'> = {
 };
 
 /**
- * Read the site singleton once and normalize it so every layout and page
+ * Read site settings and normalize so every layout and page
  * renders the same copy without repeating fallbacks.
  */
 export async function getSiteSettings(): Promise<SiteSettings> {
-  'use cache';
-
-  const settings = await reader.singletons.site.read();
-
   return {
-    name: settings?.name || DEFAULTS.name,
-    headline: settings?.headline || DEFAULTS.headline,
-    description: settings?.description || DEFAULTS.description,
-    githubOrg: settings?.githubOrg || DEFAULTS.githubOrg,
-    authorName: settings?.authorName || DEFAULTS.authorName,
-    authorUrl: settings?.authorUrl || DEFAULTS.authorUrl,
+    name: siteSettings.name || DEFAULTS.name,
+    headline: siteSettings.headline || DEFAULTS.headline,
+    description: siteSettings.description || DEFAULTS.description,
+    githubOrg: siteSettings.githubOrg || DEFAULTS.githubOrg,
+    authorName: siteSettings.authorName || DEFAULTS.authorName,
+    authorUrl: siteSettings.authorUrl || DEFAULTS.authorUrl,
     year: new Date().getFullYear(),
   };
 }

@@ -180,7 +180,6 @@ test.describe('Daedalabs Website', () => {
     const text = await res.text();
     expect(text).toContain('User-Agent: *');
     expect(text).toContain('Disallow: /api/');
-    expect(text).toContain('Disallow: /keystatic/');
     expect(text).toContain('Sitemap: https://daedalabs.org/sitemap.xml');
   });
 

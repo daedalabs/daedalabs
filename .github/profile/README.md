@@ -4,7 +4,7 @@
 
 **Personal workshop and experimental software dump by [@juhenes](https://github.com/juhenes).**
 
-[🌐 Visit the Live Directory](https://daedalabs.org) • [🛠️ Open Studio](https://daedalabs.org/keystatic)
+[🌐 Visit the Live Directory](https://daedalabs.org)
 
 </div>
 
@@ -29,7 +29,6 @@ All projects in this organization are indexed, categorized, and documented with 
 
 ---
 
-### 📦 Repository Guidelines
+### 📦 Repositories
 
-- Every repository in this organization follows the conventions detailed in the [Repository Guide](https://github.com/daedalabs/daedalabs/blob/main/REPOS_GUIDE.md).
-- To add a new project to the official website catalog, visit the [CMS Studio](https://daedalabs.org/keystatic).
+All tools in this organization are open source and automatically indexed directly from GitHub on [daedalabs.org](https://daedalabs.org).

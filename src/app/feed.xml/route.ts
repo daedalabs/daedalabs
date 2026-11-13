@@ -1,6 +1,5 @@
 import { getAllTools } from '@/lib/tools';
-import { reader } from '@/lib/keystatic';
-import { SITE_URL } from '@/lib/site';
+import { getSiteSettings, SITE_URL } from '@/lib/site';
 
 function escapeXml(str: string): string {
   return str
@@ -17,10 +16,7 @@ function safeCdata(str: string): string {
 }
 
 export async function GET() {
-  const [siteSettings, tools] = await Promise.all([
-    reader.singletons.site.read(),
-    getAllTools(),
-  ]);
+  const [siteSettings, tools] = await Promise.all([getSiteSettings(), getAllTools()]);
 
   const siteUrl = SITE_URL;
   const siteName = siteSettings?.name || 'Daedalabs';
