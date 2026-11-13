@@ -1,0 +1,9 @@
+node_modules
+.next
+.screenshots
+test-results
+playwright-report
+package-lock.json
+tsconfig.tsbuildinfo
+AGENTS.md
+public

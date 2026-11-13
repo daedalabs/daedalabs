@@ -3,12 +3,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { cacheLife, cacheTag } from 'next/cache';
 import { DocumentRenderer } from '@keystatic/core/renderer';
-import {
-  ArrowLeft,
-  ArrowUpRight,
-  GitFork,
-  Star,
-} from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, GitFork, Star } from 'lucide-react';
 import { getAllTools, getToolDetail } from '@/lib/tools';
 import { getSiteSettings } from '@/lib/site';
 import { SiteHeader } from '@/components/SiteHeader';
@@ -79,184 +74,184 @@ export default async function ToolDetailPage({ params }: PageProps) {
       <ThemeToggle />
 
       <main className="mx-auto w-full max-w-5xl flex-1 px-5 pb-24 pt-24 sm:px-8 sm:pt-28">
-      <Link
-        href="/"
-        className="inline-flex items-center gap-1.5 text-[12px] font-medium text-ink-dim transition-colors hover:text-ink"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
-        <span>All projects</span>
-      </Link>
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 text-[12px] font-medium text-ink-dim transition-colors hover:text-ink"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+          <span>All projects</span>
+        </Link>
 
-      <header className="mt-8 border-b border-line pb-8">
-        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim">
-          <span>{category}</span>
-          {tool.releaseDate && (
-            <>
-              <span aria-hidden="true">·</span>
-              <span>{tool.releaseDate}</span>
-            </>
-          )}
-          {typeof tool.stargazersCount === 'number' && tool.stargazersCount > 0 && (
-            <>
-              <span aria-hidden="true">·</span>
-              <span className="flex items-center gap-1">
-                <Star className="h-3 w-3 fill-accent text-accent" aria-hidden="true" />
-                {tool.stargazersCount}
-                <span className="sr-only">stars</span>
-              </span>
-            </>
-          )}
-          {typeof tool.forksCount === 'number' && tool.forksCount > 0 && (
-            <>
-              <span aria-hidden="true">·</span>
-              <span className="flex items-center gap-1">
-                <GitFork className="h-3 w-3" aria-hidden="true" />
-                {tool.forksCount}
-                <span className="sr-only">forks</span>
-              </span>
-            </>
-          )}
-        </div>
-
-        <h1 className="mt-3 text-[2rem] font-semibold leading-[1.1] tracking-[-0.035em] text-ink sm:text-[2.75rem]">
-          {tool.name}
-        </h1>
-
-        <p className="mt-3 max-w-2xl text-pretty text-[15px] leading-relaxed text-ink-muted">
-          {tool.tagline}
-        </p>
-
-        <div className="mt-6 flex flex-wrap items-center gap-2">
-          {tool.githubUrl && (
-            <a
-              href={tool.githubUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex h-9 items-center gap-2 rounded-md border border-line bg-surface/60 px-3 text-[12px] font-medium text-ink-muted transition-colors duration-200 hover:border-line-strong hover:text-ink"
-            >
-              <GithubIcon className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>GitHub</span>
-            </a>
-          )}
-
-          {tool.demoUrl && (
-            <a
-              href={tool.demoUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex h-9 items-center gap-2 rounded-md border border-line bg-surface/60 px-3 text-[12px] font-medium text-ink-muted transition-colors duration-200 hover:border-line-strong hover:text-ink"
-            >
-              <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>Live demo</span>
-            </a>
-          )}
-
-          {tool.npmUrl && (
-            <a
-              href={tool.npmUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex h-9 items-center gap-2 rounded-md border border-line bg-surface/60 px-3 text-[12px] font-medium text-ink-muted transition-colors duration-200 hover:border-line-strong hover:text-ink"
-            >
-              <span>npm</span>
-            </a>
-          )}
-        </div>
-
-        {tool.githubUrl && (
-          <div className="mt-4 max-w-xl">
-            <CloneCommand repoUrl={tool.githubUrl} />
-          </div>
-        )}
-      </header>
-
-      <div className="mt-10 grid gap-12 lg:grid-cols-[minmax(0,1fr)_13rem] lg:gap-14">
-        <div className="min-w-0">
-          <CodeBlockEnhancer />
-          {contentAST ? (
-            <article className="prose-dl max-w-[70ch]">
-              <DocumentRenderer document={contentAST} />
-            </article>
-          ) : readmeHtml ? (
-            <article
-              className="prose-dl max-w-[70ch]"
-              dangerouslySetInnerHTML={{ __html: readmeHtml }}
-            />
-          ) : (
-            <p className="text-sm text-ink-dim">
-              No documentation has been written for this project yet.
-            </p>
-          )}
-        </div>
-
-        <aside className="min-w-0 lg:sticky lg:top-24 lg:h-fit">
-          <dl className="divide-y divide-line border-y border-line">
-            <div className="flex items-baseline justify-between gap-4 py-2.5">
-              <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim">
-                Category
-              </dt>
-              <dd className="text-[12px] text-ink-muted">{category}</dd>
-            </div>
+        <header className="mt-8 border-b border-line pb-8">
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim">
+            <span>{category}</span>
             {tool.releaseDate && (
-              <div className="flex items-baseline justify-between gap-4 py-2.5">
-                <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim">
-                  Released
-                </dt>
-                <dd className="text-[12px] text-ink-muted">{tool.releaseDate}</dd>
-              </div>
+              <>
+                <span aria-hidden="true">·</span>
+                <span>{tool.releaseDate}</span>
+              </>
             )}
             {typeof tool.stargazersCount === 'number' && tool.stargazersCount > 0 && (
-              <div className="flex items-baseline justify-between gap-4 py-2.5">
-                <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim">
-                  Stars
-                </dt>
-                <dd className="text-[12px] text-ink-muted">{tool.stargazersCount}</dd>
-              </div>
+              <>
+                <span aria-hidden="true">·</span>
+                <span className="flex items-center gap-1">
+                  <Star className="h-3 w-3 fill-accent text-accent" aria-hidden="true" />
+                  {tool.stargazersCount}
+                  <span className="sr-only">stars</span>
+                </span>
+              </>
             )}
-            {tool.tags.length > 0 && (
-              <div className="flex items-start justify-between gap-4 py-2.5">
-                <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim">
-                  Tags
-                </dt>
-                <dd className="text-right font-mono text-[11px] leading-relaxed text-ink-muted">
-                  {tool.tags.join(' · ')}
-                </dd>
-              </div>
+            {typeof tool.forksCount === 'number' && tool.forksCount > 0 && (
+              <>
+                <span aria-hidden="true">·</span>
+                <span className="flex items-center gap-1">
+                  <GitFork className="h-3 w-3" aria-hidden="true" />
+                  {tool.forksCount}
+                  <span className="sr-only">forks</span>
+                </span>
+              </>
             )}
-          </dl>
+          </div>
 
-          {otherTools.length > 0 && (
-            <div className="mt-10">
-              <h2 className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-dim">
-                More projects
-              </h2>
-              <ul className="mt-2 divide-y divide-line">
-                {otherTools.map((other) => (
-                  <li key={other.slug}>
-                    <Link
-                      href={`/tools/${other.slug}`}
-                      className="group flex items-center justify-between gap-3 py-2.5"
-                    >
-                      <span className="min-w-0">
-                        <span className="block truncate text-[13px] font-medium text-ink-muted transition-colors group-hover:text-ink">
-                          {other.name}
-                        </span>
-                        <span className="mt-0.5 block truncate font-mono text-[10px] uppercase tracking-[0.08em] text-ink-dim">
-                          {categoryLabels[other.category] ?? categoryLabels.other}
-                        </span>
-                      </span>
-                      <ArrowUpRight
-                        className="h-3.5 w-3.5 shrink-0 text-ink-dim transition-all duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-ink"
-                        aria-hidden="true"
-                      />
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+          <h1 className="mt-3 text-[2rem] font-semibold leading-[1.1] tracking-[-0.035em] text-ink sm:text-[2.75rem]">
+            {tool.name}
+          </h1>
+
+          <p className="mt-3 max-w-2xl text-pretty text-[15px] leading-relaxed text-ink-muted">
+            {tool.tagline}
+          </p>
+
+          <div className="mt-6 flex flex-wrap items-center gap-2">
+            {tool.githubUrl && (
+              <a
+                href={tool.githubUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex h-9 items-center gap-2 rounded-md border border-line bg-surface/60 px-3 text-[12px] font-medium text-ink-muted transition-colors duration-200 hover:border-line-strong hover:text-ink"
+              >
+                <GithubIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>GitHub</span>
+              </a>
+            )}
+
+            {tool.demoUrl && (
+              <a
+                href={tool.demoUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex h-9 items-center gap-2 rounded-md border border-line bg-surface/60 px-3 text-[12px] font-medium text-ink-muted transition-colors duration-200 hover:border-line-strong hover:text-ink"
+              >
+                <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>Live demo</span>
+              </a>
+            )}
+
+            {tool.npmUrl && (
+              <a
+                href={tool.npmUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex h-9 items-center gap-2 rounded-md border border-line bg-surface/60 px-3 text-[12px] font-medium text-ink-muted transition-colors duration-200 hover:border-line-strong hover:text-ink"
+              >
+                <span>npm</span>
+              </a>
+            )}
+          </div>
+
+          {tool.githubUrl && (
+            <div className="mt-4 max-w-xl">
+              <CloneCommand repoUrl={tool.githubUrl} />
             </div>
           )}
-        </aside>
-      </div>
+        </header>
+
+        <div className="mt-10 grid gap-12 lg:grid-cols-[minmax(0,1fr)_13rem] lg:gap-14">
+          <div className="min-w-0">
+            <CodeBlockEnhancer />
+            {contentAST ? (
+              <article className="prose-dl max-w-[70ch]">
+                <DocumentRenderer document={contentAST} />
+              </article>
+            ) : readmeHtml ? (
+              <article
+                className="prose-dl max-w-[70ch]"
+                dangerouslySetInnerHTML={{ __html: readmeHtml }}
+              />
+            ) : (
+              <p className="text-sm text-ink-dim">
+                No documentation has been written for this project yet.
+              </p>
+            )}
+          </div>
+
+          <aside className="min-w-0 lg:sticky lg:top-24 lg:h-fit">
+            <dl className="divide-y divide-line border-y border-line">
+              <div className="flex items-baseline justify-between gap-4 py-2.5">
+                <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim">
+                  Category
+                </dt>
+                <dd className="text-[12px] text-ink-muted">{category}</dd>
+              </div>
+              {tool.releaseDate && (
+                <div className="flex items-baseline justify-between gap-4 py-2.5">
+                  <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim">
+                    Released
+                  </dt>
+                  <dd className="text-[12px] text-ink-muted">{tool.releaseDate}</dd>
+                </div>
+              )}
+              {typeof tool.stargazersCount === 'number' && tool.stargazersCount > 0 && (
+                <div className="flex items-baseline justify-between gap-4 py-2.5">
+                  <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim">
+                    Stars
+                  </dt>
+                  <dd className="text-[12px] text-ink-muted">{tool.stargazersCount}</dd>
+                </div>
+              )}
+              {tool.tags.length > 0 && (
+                <div className="flex items-start justify-between gap-4 py-2.5">
+                  <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim">
+                    Tags
+                  </dt>
+                  <dd className="text-right font-mono text-[11px] leading-relaxed text-ink-muted">
+                    {tool.tags.join(' · ')}
+                  </dd>
+                </div>
+              )}
+            </dl>
+
+            {otherTools.length > 0 && (
+              <div className="mt-10">
+                <h2 className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-dim">
+                  More projects
+                </h2>
+                <ul className="mt-2 divide-y divide-line">
+                  {otherTools.map((other) => (
+                    <li key={other.slug}>
+                      <Link
+                        href={`/tools/${other.slug}`}
+                        className="group flex items-center justify-between gap-3 py-2.5"
+                      >
+                        <span className="min-w-0">
+                          <span className="block truncate text-[13px] font-medium text-ink-muted transition-colors group-hover:text-ink">
+                            {other.name}
+                          </span>
+                          <span className="mt-0.5 block truncate font-mono text-[10px] uppercase tracking-[0.08em] text-ink-dim">
+                            {categoryLabels[other.category] ?? categoryLabels.other}
+                          </span>
+                        </span>
+                        <ArrowUpRight
+                          className="h-3.5 w-3.5 shrink-0 text-ink-dim transition-all duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-ink"
+                          aria-hidden="true"
+                        />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </aside>
+        </div>
       </main>
 
       <Footer

@@ -1,7 +1,9 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Daedalabs Website', () => {
-  test('homepage renders cleanly without intro marketing text, stats, or CMS remnants', async ({ page }) => {
+  test('homepage renders cleanly without intro marketing text, stats, or CMS remnants', async ({
+    page,
+  }) => {
     await page.goto('/');
 
     // Check title and brand
@@ -46,7 +48,9 @@ test.describe('Daedalabs Website', () => {
     }
   });
 
-  test('keyboard shortcut "/" focuses the search bar and Esc clears', async ({ page }) => {
+  test('keyboard shortcut "/" focuses the search bar and Esc clears', async ({
+    page,
+  }) => {
     await page.goto('/');
     await expect(page.locator('[data-hydrated="true"]')).toBeVisible();
 
@@ -66,7 +70,9 @@ test.describe('Daedalabs Website', () => {
     await expect(searchInput).toHaveValue('');
   });
 
-  test('category filter pills and live/beta status badges are removed', async ({ page }) => {
+  test('category filter pills and live/beta status badges are removed', async ({
+    page,
+  }) => {
     await page.goto('/');
 
     // Category pills should NOT exist
@@ -83,7 +89,9 @@ test.describe('Daedalabs Website', () => {
     await expect(page.locator('option[value="live"]')).toHaveCount(0);
   });
 
-  test('URL query parameter (?category=byox) sets category filter state', async ({ page }) => {
+  test('URL query parameter (?category=byox) sets category filter state', async ({
+    page,
+  }) => {
     await page.goto('/?category=byox');
 
     // Active filter badge should be visible
@@ -122,7 +130,9 @@ test.describe('Daedalabs Website', () => {
     expect(homeOgRes.headers()['content-type']).toContain('image/png');
   });
 
-  test('API route /api/tools/[slug] returns 404 for unknown tool', async ({ request }) => {
+  test('API route /api/tools/[slug] returns 404 for unknown tool', async ({
+    request,
+  }) => {
     const res = await request.get('/api/tools/non-existent-tool');
     expect(res.status()).toBe(404);
     const json = await res.json();

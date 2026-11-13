@@ -8,6 +8,8 @@
     "start": "next start",
     "lint": "oxlint",
     "lint:eslint": "eslint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test"
   },
@@ -28,6 +30,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.6",
     "oxlint": "^1.93.0",
+    "prettier": "^3.10.1",
     "tailwindcss": "4.3.3",
     "typescript": "^5"
   }

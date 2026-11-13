@@ -1,15 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import {
-  ArrowDown,
-  LayoutGrid,
-  List,
-  Search,
-  Shuffle,
-  Star,
-  X,
-} from 'lucide-react';
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
+import { ArrowDown, LayoutGrid, List, Search, Shuffle, Star, X } from 'lucide-react';
 import { ToolCard, ToolItem, categoryLabels } from './ToolCard';
 import { ToolModal } from './ToolModal';
 import { SiteHeader } from './SiteHeader';
@@ -53,8 +52,6 @@ const HEADER_OFFSET = 58;
 /** How far the hero shrinks as the catalog slides over it. */
 const HERO_SCALE = 0.1;
 
-
-
 const DEFAULT_SITE: SiteInfo = {
   name: 'daedalabs',
   headline: 'Capable open source tools.',
@@ -74,7 +71,14 @@ interface SearchFieldProps {
   compact?: boolean;
 }
 
-function SearchField({ id, value, onChange, onEnter, inputRef, compact }: SearchFieldProps) {
+function SearchField({
+  id,
+  value,
+  onChange,
+  onEnter,
+  inputRef,
+  compact,
+}: SearchFieldProps) {
   return (
     <div className="relative w-full">
       <label htmlFor={id} className="sr-only">
@@ -131,9 +135,7 @@ interface ViewToggleProps {
 function ViewToggle({ value, onChange }: ViewToggleProps) {
   const buttonClass = (active: boolean) =>
     `flex h-7 w-7 items-center justify-center rounded transition-colors duration-150 ${
-      active
-        ? 'bg-elevated text-ink'
-        : 'text-ink-dim hover:text-ink'
+      active ? 'bg-elevated text-ink' : 'text-ink-dim hover:text-ink'
     }`;
 
   return (
@@ -168,7 +170,11 @@ function ViewToggle({ value, onChange }: ViewToggleProps) {
 
 export function ToolsExplorer({ initialTools, site }: ToolsExplorerProps) {
   const siteInfo = site || DEFAULT_SITE;
-  const isHydrated = useSyncExternalStore(emptySubscribe, () => true, () => false);
+  const isHydrated = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
 
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -546,7 +552,11 @@ export function ToolsExplorer({ initialTools, site }: ToolsExplorerProps) {
         }
       >
         {isScrolled ? (
-          <div role="search" aria-label="Search projects" className="mx-auto w-full max-w-sm">
+          <div
+            role="search"
+            aria-label="Search projects"
+            className="mx-auto w-full max-w-sm"
+          >
             <SearchField
               id="header-search"
               compact
@@ -562,8 +572,14 @@ export function ToolsExplorer({ initialTools, site }: ToolsExplorerProps) {
       <ThemeToggle />
 
       <main data-hydrated={isHydrated ? 'true' : undefined} className="flex-1">
-        <section ref={heroSectionRef} className="sticky top-0 flex h-[100svh] flex-col overflow-hidden">
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+        <section
+          ref={heroSectionRef}
+          className="sticky top-0 flex h-[100svh] flex-col overflow-hidden"
+        >
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 overflow-hidden"
+          >
             <div className="absolute left-1/2 top-0 h-[36rem] w-[72rem] -translate-x-1/2 -translate-y-1/3 rounded-full bg-[radial-gradient(closest-side,var(--hero-glow),transparent)]" />
           </div>
 
@@ -594,7 +610,10 @@ export function ToolsExplorer({ initialTools, site }: ToolsExplorerProps) {
                   className="group inline-flex h-10 items-center gap-2 rounded-md bg-ink px-4 text-[13px] font-medium text-canvas transition-colors duration-200 hover:bg-ink/90"
                 >
                   <span>Browse projects</span>
-                  <ArrowDown className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-y-0.5" aria-hidden="true" />
+                  <ArrowDown
+                    className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-y-0.5"
+                    aria-hidden="true"
+                  />
                 </a>
                 <a
                   href={siteInfo.githubOrg}
@@ -698,7 +717,9 @@ export function ToolsExplorer({ initialTools, site }: ToolsExplorerProps) {
             <div className="flex h-full flex-1 flex-col">
               {initialTools.length === 0 ? (
                 <div className="flex h-full flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-line-strong p-6 text-center">
-                  <p className="text-[16px] font-medium text-ink">No projects published yet</p>
+                  <p className="text-[16px] font-medium text-ink">
+                    No projects published yet
+                  </p>
                   <p className="mt-2 max-w-md text-[13px] leading-relaxed text-ink-muted">
                     Public repositories added to{' '}
                     <a
@@ -716,9 +737,10 @@ export function ToolsExplorer({ initialTools, site }: ToolsExplorerProps) {
                 <div className="flex min-h-[360px] flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-line-strong p-6 text-center">
                   <p className="text-[16px] font-medium text-ink">No projects found</p>
                   <p className="mt-2 max-w-md text-[13px] leading-relaxed text-ink-muted">
-                    Nothing here matches {search.trim() ? `“${search.trim()}”` : 'the current filters'}
-                    {selectedCategory !== 'all' ? ` in ${activeCategoryLabel}` : ''}. Try a
-                    different search.
+                    Nothing here matches{' '}
+                    {search.trim() ? `“${search.trim()}”` : 'the current filters'}
+                    {selectedCategory !== 'all' ? ` in ${activeCategoryLabel}` : ''}. Try
+                    a different search.
                   </p>
                   <button
                     type="button"
@@ -771,12 +793,16 @@ export function ToolsExplorer({ initialTools, site }: ToolsExplorerProps) {
                           {categoryLabels[tool.category] ?? categoryLabels.other}
                         </span>
 
-                        {typeof tool.stargazersCount === 'number' && tool.stargazersCount > 0 && (
-                          <span className="flex items-center gap-1 font-mono text-[10px] text-ink-dim">
-                            <Star className="h-3 w-3 fill-accent text-accent" aria-hidden="true" />
-                            <span>{tool.stargazersCount}</span>
-                          </span>
-                        )}
+                        {typeof tool.stargazersCount === 'number' &&
+                          tool.stargazersCount > 0 && (
+                            <span className="flex items-center gap-1 font-mono text-[10px] text-ink-dim">
+                              <Star
+                                className="h-3 w-3 fill-accent text-accent"
+                                aria-hidden="true"
+                              />
+                              <span>{tool.stargazersCount}</span>
+                            </span>
+                          )}
 
                         <div
                           className="flex items-center gap-0.5"

@@ -2,13 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
-import {
-  ArrowUpRight,
-  ExternalLink,
-  GitFork,
-  Star,
-  X,
-} from 'lucide-react';
+import { ArrowUpRight, ExternalLink, GitFork, Star, X } from 'lucide-react';
 import { ToolItem, categoryLabels } from './ToolCard';
 import { CloneCommand } from './CloneCommand';
 import { CodeBlockEnhancer } from './CodeBlockEnhancer';
@@ -84,7 +78,12 @@ export function ToolModal({ tool, onClose }: ToolModalProps) {
 
   // Load README content on demand when it is not already available locally.
   useEffect(() => {
-    if (!tool || tool.readmeHtml || tool.slug in fetchedHtml || fetchErrors.has(tool.slug)) {
+    if (
+      !tool ||
+      tool.readmeHtml ||
+      tool.slug in fetchedHtml ||
+      fetchErrors.has(tool.slug)
+    ) {
       return;
     }
 
@@ -159,7 +158,10 @@ export function ToolModal({ tool, onClose }: ToolModalProps) {
                 <>
                   <span aria-hidden="true">·</span>
                   <span className="flex items-center gap-1">
-                    <Star className="h-3 w-3 fill-accent text-accent" aria-hidden="true" />
+                    <Star
+                      className="h-3 w-3 fill-accent text-accent"
+                      aria-hidden="true"
+                    />
                     {tool.stargazersCount}
                     <span className="sr-only">stars</span>
                   </span>
@@ -243,11 +245,19 @@ export function ToolModal({ tool, onClose }: ToolModalProps) {
           )}
         </header>
 
-        <div ref={contentRef} className="flex-1 overflow-y-auto px-5 py-6 sm:px-7 sm:py-7">
+        <div
+          ref={contentRef}
+          className="flex-1 overflow-y-auto px-5 py-6 sm:px-7 sm:py-7"
+        >
           <CodeBlockEnhancer />
 
           {isLoading && !activeReadmeHtml ? (
-            <div role="status" aria-live="polite" aria-busy="true" aria-label="Loading documentation">
+            <div
+              role="status"
+              aria-live="polite"
+              aria-busy="true"
+              aria-label="Loading documentation"
+            >
               <div className="space-y-3">
                 <div className="h-3.5 w-2/5 animate-pulse rounded bg-surface" />
                 <div className="h-3 w-full animate-pulse rounded bg-surface" />
@@ -261,7 +271,10 @@ export function ToolModal({ tool, onClose }: ToolModalProps) {
               <span className="sr-only">Loading documentation</span>
             </div>
           ) : fetchErrors.has(tool.slug) ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center" role="alert">
+            <div
+              className="flex flex-col items-center justify-center py-16 text-center"
+              role="alert"
+            >
               <p className="text-sm text-ink-muted">
                 Could not load this repository&apos;s documentation.
               </p>
