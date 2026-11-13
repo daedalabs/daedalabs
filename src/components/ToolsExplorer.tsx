@@ -1,7 +1,5 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import Link from 'next/link';
 import {
   useCallback,
   useEffect,
@@ -10,6 +8,7 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react';
+import Link from 'next/link';
 import { ArrowDown, LayoutGrid, List, Search, Shuffle, Star, X } from 'lucide-react';
 import { ToolCard, ToolItem, categoryLabels } from './ToolCard';
 import { ToolModal } from './ToolModal';

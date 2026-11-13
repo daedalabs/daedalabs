@@ -1,9 +1,5 @@
 import Link from 'next/link';
-import {
-  ArrowUpRight,
-  ExternalLink,
-  Star,
-} from 'lucide-react';
+import { ArrowUpRight, ExternalLink, Star } from 'lucide-react';
 import { GithubIcon } from '@/components/icons/GithubIcon';
 
 export interface ToolItem {

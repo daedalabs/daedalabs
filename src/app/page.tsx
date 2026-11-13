@@ -60,7 +60,8 @@ export default async function HomePage() {
           '@context': 'https://schema.org',
           '@type': 'ItemList',
           name: 'Open Source Tools & Experiments',
-          description: 'Catalog of open-source tools and software systems published by daedalabs',
+          description:
+            'Catalog of open-source tools and software systems published by daedalabs',
           numberOfItems: tools.length,
           itemListElement: tools.map((tool, index) => ({
             '@type': 'ListItem',

@@ -172,7 +172,9 @@ test.describe('Daedalabs Website', () => {
     expect(json.event).toBe('ping');
   });
 
-  test('robots.txt returns correct crawl directives and sitemap link', async ({ request }) => {
+  test('robots.txt returns correct crawl directives and sitemap link', async ({
+    request,
+  }) => {
     const res = await request.get('/robots.txt');
     expect(res.ok()).toBeTruthy();
     const text = await res.text();
@@ -182,7 +184,9 @@ test.describe('Daedalabs Website', () => {
     expect(text).toContain('Sitemap: https://daedalabs.org/sitemap.xml');
   });
 
-  test('manifest.webmanifest is accessible and has proper structure', async ({ request }) => {
+  test('manifest.webmanifest is accessible and has proper structure', async ({
+    request,
+  }) => {
     const res = await request.get('/manifest.webmanifest');
     expect(res.ok()).toBeTruthy();
     const json = await res.json();
@@ -192,7 +196,9 @@ test.describe('Daedalabs Website', () => {
     expect(json.icons.length).toBeGreaterThan(0);
   });
 
-  test('homepage contains canonical link, RSS feed link, and valid JSON-LD structured data', async ({ page }) => {
+  test('homepage contains canonical link, RSS feed link, and valid JSON-LD structured data', async ({
+    page,
+  }) => {
     await page.goto('/');
 
     // Check canonical link
@@ -233,7 +239,9 @@ test.describe('Daedalabs Website', () => {
     expect(types).toContain('Organization');
   });
 
-  test('mouse scroll wheel navigates between hero and catalog smoothly', async ({ page }) => {
+  test('mouse scroll wheel navigates between hero and catalog smoothly', async ({
+    page,
+  }) => {
     await page.goto('/');
     await expect(page.locator('[data-hydrated="true"]')).toBeVisible();
 
