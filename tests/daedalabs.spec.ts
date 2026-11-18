@@ -303,7 +303,7 @@ test.describe('Daedalabs Website', () => {
     expect(types).toContain('Organization');
   });
 
-  test('mouse scroll wheel navigates between hero and catalog smoothly', async ({
+  test('mouse scroll wheel navigates between hero and catalog smoothly with auto-snap', async ({
     page,
   }) => {
     await page.goto('/');
@@ -313,29 +313,32 @@ test.describe('Daedalabs Website', () => {
     const initialScrollY = await page.evaluate(() => window.scrollY);
     expect(initialScrollY).toBe(0);
 
-    // Roll mouse wheel down
-    await page.mouse.wheel(0, 300);
+    // Roll mouse wheel down one notch
+    await page.mouse.wheel(0, 100);
 
-    // Should natively scroll downwards
+    // Should smoothly scroll towards catalog dock position via auto-snap
     await expect
       .poll(async () => page.evaluate(() => window.scrollY), {
         timeout: 5000,
         intervals: [100, 200, 300],
       })
-      .toBeGreaterThan(0);
+      .toBeGreaterThan(300);
 
-    const scrolledY = await page.evaluate(() => window.scrollY);
+    // Wait for snap animation to finish settling at dock
+    await page.waitForTimeout(600);
+    const dockedScrollY = await page.evaluate(() => window.scrollY);
+    expect(dockedScrollY).toBeGreaterThan(400);
 
-    // Roll mouse wheel back up
-    await page.mouse.wheel(0, -scrolledY);
+    // Roll mouse wheel up one notch from dock
+    await page.mouse.wheel(0, -100);
 
-    // Should scroll back towards the top
+    // Should smoothly scroll back to top of the hero via auto-snap
     await expect
       .poll(async () => page.evaluate(() => window.scrollY), {
         timeout: 5000,
         intervals: [100, 200, 300],
       })
-      .toBeLessThan(scrolledY);
+      .toBeLessThan(50);
   });
 
   test('SEO metadata dynamically includes site information, OpenGraph, and JSON-LD schema', async ({

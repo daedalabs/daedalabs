@@ -79,8 +79,6 @@ export function ToolModal({ tool, onClose }: ToolModalProps) {
     document.documentElement.style.overflow = 'hidden';
 
     // Prevent wheel and touch gestures on backdrop or at boundaries from scrolling the page behind
-    const backdropEl = backdropRef.current;
-
     const handleWheel = (e: WheelEvent) => {
       const scrollable = contentRef.current;
       if (!scrollable || !scrollable.contains(e.target as Node)) {
@@ -120,12 +118,9 @@ export function ToolModal({ tool, onClose }: ToolModalProps) {
       }
     };
 
-    if (backdropEl) {
-      backdropEl.addEventListener('wheel', handleWheel, { passive: false });
-      backdropEl.addEventListener('touchstart', handleTouchStart, { passive: true });
-      backdropEl.addEventListener('touchmove', handleTouchMove, { passive: false });
-    }
-
+    window.addEventListener('wheel', handleWheel, { passive: false });
+    window.addEventListener('touchstart', handleTouchStart, { passive: true });
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
@@ -133,11 +128,9 @@ export function ToolModal({ tool, onClose }: ToolModalProps) {
       document.body.style.overflow = originalBodyOverflow;
       document.documentElement.style.overflow = originalHtmlOverflow;
       document.body.style.paddingRight = originalBodyPaddingRight;
-      if (backdropEl) {
-        backdropEl.removeEventListener('wheel', handleWheel);
-        backdropEl.removeEventListener('touchstart', handleTouchStart);
-        backdropEl.removeEventListener('touchmove', handleTouchMove);
-      }
+      window.removeEventListener('wheel', handleWheel);
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('keydown', handleKeyDown);
       previouslyFocusedElement?.focus?.();
     };
