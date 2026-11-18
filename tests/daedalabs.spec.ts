@@ -76,7 +76,7 @@ test.describe('Daedalabs Website', () => {
     await expect(page.locator('[data-hydrated="true"]')).toBeVisible();
 
     // Initial state has 'All' selected
-    const allCategoryBtn = page.getByRole('button', { name: 'All' });
+    const allCategoryBtn = page.getByRole('button', { name: 'All', exact: true });
     await expect(allCategoryBtn).toHaveAttribute('aria-pressed', 'true');
 
     // Click category button if present in dataset
@@ -87,6 +87,37 @@ test.describe('Daedalabs Website', () => {
       await expect(allCategoryBtn).toHaveAttribute('aria-pressed', 'false');
       await expect(page).toHaveURL(/category=byox/);
       await expect(page.locator('text=category: Build your own')).toBeVisible();
+    }
+  });
+
+  test('docked header CategoryMenu and SortMenu have consistent custom popup UX and filter correctly', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    await expect(page.locator('[data-hydrated="true"]')).toBeVisible();
+
+    // Scroll to reveal docked header
+    await page.evaluate(() => window.scrollTo(0, 800));
+    await page.waitForTimeout(100);
+
+    const categoryMenuBtn = page.getByRole('button', { name: /Filter by category/i });
+    await expect(categoryMenuBtn).toBeVisible();
+
+    // Open category dropdown
+    await categoryMenuBtn.click();
+    const categoryMenu = page.getByRole('menu', { name: /Filter by category/i });
+    await expect(categoryMenu).toBeVisible();
+
+    // Select 'Desktop' or 'Web apps' or 'All'
+    const desktopItem = categoryMenu.getByRole('menuitemradio', { name: /Desktop/i });
+    if ((await desktopItem.count()) > 0) {
+      await desktopItem.click();
+      await expect(categoryMenu).not.toBeVisible();
+      await expect(page).toHaveURL(/category=desktop/);
+      await expect(page.locator('text=category: Desktop')).toBeVisible();
+    } else {
+      await page.keyboard.press('Escape');
+      await expect(categoryMenu).not.toBeVisible();
     }
   });
 

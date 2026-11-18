@@ -3,17 +3,28 @@
 import { useEffect, useRef } from 'react';
 
 function enhancePre(pre: HTMLElement) {
-  // Avoid adding multiple buttons
+  // Avoid adding multiple buttons or re-wrapping
   if (pre.getAttribute('data-copy-enhanced') === 'true') return;
+  if (pre.parentElement?.classList.contains('code-block-wrapper')) return;
   pre.setAttribute('data-copy-enhanced', 'true');
 
-  // Styling is expressed as Tailwind utilities on the injected element; the
-  // classes are static strings, so Tailwind generates them at build time.
-  pre.style.position = 'relative';
+  const parent = pre.parentElement;
+  if (!parent) return;
+
+  // Wrap the scrolling <pre> in a relative non-scrolling container so that
+  // the copy button remains pinned to the top-right corner of the code block box
+  // instead of sliding horizontally with the pre's scrollable content.
+  const wrapper = document.createElement('div');
+  wrapper.className = 'code-block-wrapper relative group my-[1.15em]';
+  pre.style.marginTop = '0';
+  pre.style.marginBottom = '0';
+
+  parent.insertBefore(wrapper, pre);
+  wrapper.appendChild(pre);
 
   const button = document.createElement('button');
   button.className =
-    'absolute right-2 top-2 rounded border border-line-strong bg-elevated/90 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.04em] text-ink-dim opacity-70 transition duration-150 hover:border-ink-dim hover:text-ink hover:opacity-100 focus-visible:opacity-100';
+    'absolute right-2 top-2 z-10 rounded border border-line-strong bg-elevated/90 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.04em] text-ink-dim opacity-70 transition duration-150 hover:border-ink-dim hover:text-ink hover:opacity-100 focus-visible:opacity-100 backdrop-blur-sm';
   button.type = 'button';
   button.innerText = 'copy';
   button.setAttribute('aria-label', 'Copy code block to clipboard');
@@ -35,7 +46,7 @@ function enhancePre(pre: HTMLElement) {
     }
   });
 
-  pre.appendChild(button);
+  wrapper.appendChild(button);
 }
 
 export function CodeBlockEnhancer() {

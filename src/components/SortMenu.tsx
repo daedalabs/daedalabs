@@ -14,9 +14,10 @@ const OPTIONS: { value: SortOption; label: string }[] = [
 interface SortMenuProps {
   value: SortOption;
   onChange: (value: SortOption) => void;
+  className?: string;
 }
 
-export function SortMenu({ value, onChange }: SortMenuProps) {
+export function SortMenu({ value, onChange, className = '' }: SortMenuProps) {
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -106,7 +107,7 @@ export function SortMenu({ value, onChange }: SortMenuProps) {
   };
 
   return (
-    <div ref={rootRef} className="relative">
+    <div ref={rootRef} className={`relative ${className}`}>
       <button
         ref={triggerRef}
         type="button"
@@ -116,12 +117,12 @@ export function SortMenu({ value, onChange }: SortMenuProps) {
         aria-label={`Sort projects, currently ${selectedLabel}`}
         onClick={() => (open ? closeMenu() : openMenu())}
         onKeyDown={handleTriggerKeyDown}
-        className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-[12px] font-medium text-ink-muted transition-colors duration-200 hover:bg-surface hover:text-ink"
+        className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md border border-line bg-surface/60 px-2.5 text-[12px] font-medium text-ink-muted transition-colors duration-200 hover:border-line-strong hover:bg-surface hover:text-ink"
       >
         <span>{selectedLabel}</span>
         <ChevronDown
           aria-hidden="true"
-          className={`h-3.5 w-3.5 text-ink-dim transition-transform duration-200 ${
+          className={`h-3.5 w-3.5 text-ink-dim transition-transform duration-200 shrink-0 ${
             open ? 'rotate-180' : ''
           }`}
         />
