@@ -10,7 +10,8 @@ import {
 } from 'react';
 import Link from 'next/link';
 import { ArrowDown, LayoutGrid, List, Search, Shuffle, Star, X } from 'lucide-react';
-import { ToolCard, ToolItem, categoryLabels } from './ToolCard';
+import { prepareTools, rankTools } from '@/lib/search';
+import { ToolCard, HighlightedText, ToolItem, categoryLabels } from './ToolCard';
 import { ToolModal } from './ToolModal';
 import { SiteHeader } from './SiteHeader';
 import { ThemeToggle } from './ThemeToggle';
@@ -50,6 +51,41 @@ const ALL_CATEGORIES = [
 
 type ViewMode = 'grid' | 'table';
 
+type SearchDocs = Record<string, string>;
+
+interface SearchResult {
+  tool: ToolItem;
+  snippet: string | null;
+}
+
+/**
+ * The README index is fetched once per browser session and shared across
+ * mounts (opening a project and going back must not refetch it).
+ */
+let searchIndexPromise: Promise<SearchDocs> | null = null;
+
+function fetchSearchIndex(): Promise<SearchDocs> {
+  if (!searchIndexPromise) {
+    searchIndexPromise = fetch('/api/search-index', {
+      headers: { Accept: 'application/json' },
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Search index request failed with ${response.status}`);
+        }
+        return response.json() as Promise<{ docs?: SearchDocs }>;
+      })
+      .then((payload) =>
+        payload && typeof payload.docs === 'object' && payload.docs ? payload.docs : {}
+      )
+      .catch((error: unknown) => {
+        searchIndexPromise = null;
+        throw error;
+      });
+  }
+  return searchIndexPromise;
+}
+
 const emptySubscribe = () => () => {};
 
 /** Space between the viewport top and the tools section once docked. */
@@ -73,6 +109,7 @@ interface SearchFieldProps {
   value: string;
   onChange: (value: string) => void;
   onEnter: () => void;
+  onFocus?: () => void;
   inputRef?: React.RefObject<HTMLInputElement | null>;
   compact?: boolean;
 }
@@ -82,6 +119,7 @@ function SearchField({
   value,
   onChange,
   onEnter,
+  onFocus,
   inputRef,
   compact,
 }: SearchFieldProps) {
@@ -102,10 +140,11 @@ function SearchField({
         type="text"
         value={value}
         onChange={(event) => onChange(event.target.value)}
+        onFocus={onFocus}
         onKeyDown={(event) => {
           if (event.key === 'Enter') onEnter();
         }}
-        placeholder={compact ? 'Search' : 'Search projects'}
+        placeholder={compact ? 'Search' : 'Search projects and docs'}
         autoComplete="off"
         spellCheck={false}
         className={`w-full rounded-md text-ink placeholder:text-ink-dim transition-colors duration-200 focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/15 ${
@@ -192,6 +231,25 @@ export function ToolsExplorer({
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [selectedModalTool, setSelectedModalTool] = useState<ToolItem | null>(null);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [searchDocs, setSearchDocs] = useState<SearchDocs | null>(null);
+  const [docsStatus, setDocsStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>(
+    'idle'
+  );
+
+  /** Load README text on first search so vague, content-based queries work. */
+  const loadSearchDocs = useCallback(() => {
+    if (docsStatus !== 'idle') return;
+    setDocsStatus('loading');
+    fetchSearchIndex()
+      .then((docs) => {
+        setSearchDocs(docs);
+        setDocsStatus('ready');
+      })
+      .catch((error: unknown) => {
+        console.warn('Content search is unavailable:', error);
+        setDocsStatus('error');
+      });
+  }, [docsStatus]);
 
   const heroInputRef = useRef<HTMLInputElement>(null);
   const headerInputRef = useRef<HTMLInputElement>(null);
@@ -276,6 +334,14 @@ export function ToolsExplorer({
       if (match) setSelectedModalTool(match);
     }
   }, [initialTools]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  // Fetch the README index once the visitor shows intent to search, including
+  // deep links such as /?q=vector+database.
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (search.trim().length >= 2) loadSearchDocs();
+  }, [search, loadSearchDocs]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   // Popstate listener: Back / Forward updates search, category, sort, view, and open modal
@@ -636,23 +702,24 @@ export function ToolsExplorer({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [selectedModalTool, isScrolled, selectedCategory, sortBy, viewMode, updateUrl]);
 
-  const filteredTools = useMemo(() => {
-    const query = search.trim().toLowerCase();
+  const preparedTools = useMemo(
+    () => prepareTools(initialTools, searchDocs),
+    [initialTools, searchDocs]
+  );
 
-    const filtered = initialTools.filter((tool) => {
-      if (selectedCategory !== 'all' && tool.category !== selectedCategory) {
-        return false;
-      }
-      if (!query) return true;
+  const searchOutcome = useMemo(() => {
+    const query = search.trim();
+    if (!query) return null;
 
-      return (
-        tool.name.toLowerCase().includes(query) ||
-        tool.tagline.toLowerCase().includes(query) ||
-        tool.tags.some((tag) => tag.toLowerCase().includes(query))
-      );
-    });
+    const scoped =
+      selectedCategory === 'all'
+        ? preparedTools
+        : preparedTools.filter((doc) => doc.tool.category === selectedCategory);
+    return rankTools(scoped, query);
+  }, [preparedTools, search, selectedCategory]);
 
-    return [...filtered].sort((a, b) => {
+  const compareTools = useCallback(
+    (a: ToolItem, b: ToolItem) => {
       if (sortBy === 'stars') {
         const starsA = a.stargazersCount || 0;
         const starsB = b.stargazersCount || 0;
@@ -661,10 +728,26 @@ export function ToolsExplorer({
         return a.name.localeCompare(b.name);
       }
       return (b.releaseDate || '').localeCompare(a.releaseDate || '');
-    });
-  }, [initialTools, search, selectedCategory, sortBy]);
+    },
+    [sortBy]
+  );
+
+  const results = useMemo<SearchResult[]>(() => {
+    if (searchOutcome) {
+      return [...searchOutcome.matches]
+        .sort((a, b) => b.score - a.score || compareTools(a.tool, b.tool))
+        .map((match) => ({ tool: match.tool, snippet: match.snippet }));
+    }
+
+    const scoped =
+      selectedCategory === 'all'
+        ? initialTools
+        : initialTools.filter((tool) => tool.category === selectedCategory);
+    return [...scoped].sort(compareTools).map((tool) => ({ tool, snippet: null }));
+  }, [searchOutcome, initialTools, selectedCategory, compareTools]);
 
   const hasActiveFilters = search.trim() !== '' || selectedCategory !== 'all';
+  const isIndexing = search.trim().length >= 2 && docsStatus === 'loading';
   const activeCategoryLabel = ALL_CATEGORIES.find(
     (entry) => entry.id === selectedCategory
   )?.label;
@@ -725,7 +808,7 @@ export function ToolsExplorer({
   };
 
   const openFirstResult = () => {
-    if (filteredTools.length > 0) handleSelectTool(filteredTools[0]);
+    if (results.length > 0) handleSelectTool(results[0].tool);
   };
 
   return (
@@ -771,6 +854,7 @@ export function ToolsExplorer({
               value={search}
               onChange={handleSearchChange}
               onEnter={openFirstResult}
+              onFocus={loadSearchDocs}
               inputRef={headerInputRef}
             />
           </div>
@@ -851,6 +935,7 @@ export function ToolsExplorer({
                       value={search}
                       onChange={handleSearchChange}
                       onEnter={openFirstResult}
+                      onFocus={loadSearchDocs}
                       inputRef={heroInputRef}
                     />
                   </div>
@@ -935,11 +1020,36 @@ export function ToolsExplorer({
               </div>
             )}
 
+            {(isIndexing ||
+              (searchOutcome && searchOutcome.mode !== 'all' && results.length > 0)) && (
+              <p
+                role="status"
+                aria-live="polite"
+                className="mb-4 flex items-center gap-2 font-mono text-[11px] text-ink-dim"
+              >
+                {isIndexing ? (
+                  <>
+                    <span
+                      className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent animate-pulse"
+                      aria-hidden="true"
+                    />
+                    <span>Searching project documentation…</span>
+                  </>
+                ) : searchOutcome?.mode === 'fuzzy' ? (
+                  <span>No exact matches — showing projects with similar wording.</span>
+                ) : (
+                  <span>
+                    No project matches every word — showing the closest matches.
+                  </span>
+                )}
+              </p>
+            )}
+
             {hasActiveFilters && (
               <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-[13px] text-ink-muted" aria-live="polite">
-                    <span className="text-ink">{filteredTools.length}</span> of{' '}
+                    <span className="text-ink">{results.length}</span> of{' '}
                     {initialTools.length} projects
                   </p>
                   {selectedCategory !== 'all' && (
@@ -1000,32 +1110,41 @@ export function ToolsExplorer({
                     will automatically appear here.
                   </p>
                 </div>
-              ) : filteredTools.length === 0 ? (
-                <div className="flex min-h-[360px] flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-line-strong p-6 text-center">
-                  <p className="text-[16px] font-medium text-ink">No projects found</p>
-                  <p className="mt-2 max-w-md text-[13px] leading-relaxed text-ink-muted">
-                    Nothing here matches{' '}
-                    {search.trim() ? `“${search.trim()}”` : 'the current filters'}
-                    {selectedCategory !== 'all' ? ` in ${activeCategoryLabel}` : ''}. Try
-                    a different search.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={clearFilters}
-                    className="mt-5 inline-flex h-9 items-center rounded-md border border-line px-3 text-[12px] font-medium text-ink-muted transition-colors duration-200 hover:border-line-strong hover:text-ink"
-                  >
-                    Clear filters
-                  </button>
-                </div>
+              ) : results.length === 0 ? (
+                isIndexing ? null : (
+                  <div className="flex min-h-[360px] flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-line-strong p-6 text-center">
+                    <p className="text-[16px] font-medium text-ink">No projects found</p>
+                    <p className="mt-2 max-w-md text-[13px] leading-relaxed text-ink-muted">
+                      Nothing here matches{' '}
+                      {search.trim() ? `“${search.trim()}”` : 'the current filters'}
+                      {selectedCategory !== 'all' ? ` in ${activeCategoryLabel}` : ''}.
+                      Search covers project names, tags, and README documentation, so try
+                      fewer or simpler words.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={clearFilters}
+                      className="mt-5 inline-flex h-9 items-center rounded-md border border-line px-3 text-[12px] font-medium text-ink-muted transition-colors duration-200 hover:border-line-strong hover:text-ink"
+                    >
+                      Clear filters
+                    </button>
+                  </div>
+                )
               ) : viewMode === 'grid' ? (
                 <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-                  {filteredTools.map((tool) => (
-                    <ToolCard key={tool.slug} tool={tool} onSelect={handleSelectTool} />
+                  {results.map(({ tool, snippet }) => (
+                    <ToolCard
+                      key={tool.slug}
+                      tool={tool}
+                      onSelect={handleSelectTool}
+                      matchSnippet={snippet}
+                      matchTerms={searchOutcome?.terms}
+                    />
                   ))}
                 </div>
               ) : (
                 <div role="list" className="border-y border-line">
-                  {filteredTools.map((tool, index) => (
+                  {results.map(({ tool, snippet }, index) => (
                     <div
                       key={tool.slug}
                       role="listitem"
@@ -1046,28 +1165,41 @@ export function ToolsExplorer({
                         {String(index + 1).padStart(2, '0')}
                       </span>
 
-                      <div className="flex min-w-0 flex-1 flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-3">
-                        <Link
-                          href={`/tools/${tool.slug}`}
-                          onClick={(event) => {
-                            if (
-                              !event.metaKey &&
-                              !event.ctrlKey &&
-                              !event.shiftKey &&
-                              !event.altKey &&
-                              event.button === 0
-                            ) {
-                              event.preventDefault();
-                              handleSelectTool(tool);
-                            }
-                          }}
-                          className="shrink-0 text-[13px] font-medium text-ink transition-colors hover:text-accent focus-visible:underline"
-                        >
-                          {tool.name}
-                        </Link>
-                        <span className="truncate text-[12px] text-ink-muted">
-                          {tool.tagline}
-                        </span>
+                      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                        <div className="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-3">
+                          <Link
+                            href={`/tools/${tool.slug}`}
+                            onClick={(event) => {
+                              if (
+                                !event.metaKey &&
+                                !event.ctrlKey &&
+                                !event.shiftKey &&
+                                !event.altKey &&
+                                event.button === 0
+                              ) {
+                                event.preventDefault();
+                                handleSelectTool(tool);
+                              }
+                            }}
+                            className="shrink-0 text-[13px] font-medium text-ink transition-colors hover:text-accent focus-visible:underline"
+                          >
+                            {tool.name}
+                          </Link>
+                          <span className="truncate text-[12px] text-ink-muted">
+                            {tool.tagline}
+                          </span>
+                        </div>
+                        {snippet && (
+                          <p className="truncate text-[11px] text-ink-dim">
+                            <span className="mr-1.5 font-mono text-[9px] uppercase tracking-[0.12em]">
+                              readme
+                            </span>
+                            <HighlightedText
+                              text={snippet}
+                              terms={searchOutcome?.terms}
+                            />
+                          </p>
+                        )}
                       </div>
 
                       <div className="flex shrink-0 items-center gap-2.5">

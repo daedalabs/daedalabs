@@ -71,6 +71,49 @@ test.describe('Daedalabs Website', () => {
     await expect(searchInput).toHaveValue('');
   });
 
+  test('search matches README content, not just names and tags', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('[data-hydrated="true"]')).toBeVisible();
+
+    const cards = page.locator('article');
+    if ((await cards.count()) === 0) test.skip();
+
+    const trigger = cards.first().locator('a[data-card-trigger]');
+    const href = await trigger.getAttribute('href');
+    if (!href) {
+      test.skip();
+      return;
+    }
+
+    const slug = href.split('/').pop() as string;
+    const name = ((await trigger.textContent()) ?? '').trim();
+
+    // Serve a README for the first project whose words appear nowhere else.
+    await page.route('**/api/search-index', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          generatedAt: new Date().toISOString(),
+          docs: {
+            [slug]:
+              'This project is a quiet needle resting inside a very large haystack of unrelated words.',
+          },
+        }),
+      });
+    });
+
+    const searchInput = page.getByPlaceholder(/Search projects/i);
+    await searchInput.click();
+    await searchInput.fill('needle haystack');
+
+    await expect(cards).toHaveCount(1);
+    const result = cards.first();
+    await expect(result).toContainText(name);
+    await expect(result).toContainText('inside a very large haystack');
+    await expect(result.locator('mark')).toHaveCount(2);
+  });
+
   test('selecting a category filters projects and updates URL', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('[data-hydrated="true"]')).toBeVisible();
@@ -212,6 +255,16 @@ test.describe('Daedalabs Website', () => {
     expect(res.status()).toBe(404);
     const json = await res.json();
     expect(json.error).toBe('Tool not found');
+  });
+
+  test('API route /api/search-index returns a README docs map', async ({ request }) => {
+    const res = await request.get('/api/search-index');
+    expect(res.ok()).toBeTruthy();
+
+    const json = await res.json();
+    expect(typeof json.generatedAt).toBe('string');
+    expect(json.docs).not.toBeNull();
+    expect(typeof json.docs).toBe('object');
   });
 
   test('RSS feed and sitemap are accessible', async ({ request }) => {

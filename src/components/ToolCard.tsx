@@ -1,23 +1,17 @@
 import Link from 'next/link';
 import { ArrowUpRight, ExternalLink, Star } from 'lucide-react';
+import { categoryLabels, type Category } from '@/lib/categories';
 import { GithubIcon } from '@/components/icons/GithubIcon';
+
+export { categoryLabels };
+export type { Category };
 
 export interface ToolItem {
   slug: string;
   name: string;
   tagline: string;
   status: 'live' | 'beta' | 'experiment' | 'archived';
-  category:
-    | 'byox'
-    | 'desktop'
-    | 'web'
-    | 'cli'
-    | 'library'
-    | 'ai'
-    | 'automation'
-    | 'hardware'
-    | 'microservice'
-    | 'other';
+  category: Category;
   tags: readonly string[];
   githubUrl?: string | null;
   demoUrl?: string | null;
@@ -33,25 +27,50 @@ export interface ToolItem {
   primaryLanguage?: string | null;
 }
 
-export const categoryLabels: Record<ToolItem['category'], string> = {
-  byox: 'build your own',
-  desktop: 'desktop',
-  web: 'web',
-  cli: 'cli',
-  library: 'library',
-  ai: 'ai',
-  automation: 'automation',
-  hardware: 'hardware',
-  microservice: 'service',
-  other: 'tool',
-};
+export function HighlightedText({
+  text,
+  terms,
+}: {
+  text: string;
+  terms?: readonly string[];
+}) {
+  const usable = (terms ?? []).filter((term) => term.length >= 2);
+  if (usable.length === 0) return <>{text}</>;
+
+  const pattern = new RegExp(
+    `(?<![a-z0-9])((?:${usable
+      .slice()
+      .sort((a, b) => b.length - a.length)
+      .map((term) => term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+      .join('|')})[a-z0-9]*)`,
+    'gi'
+  );
+
+  return (
+    <>
+      {text.split(pattern).map((part, index) =>
+        index % 2 === 1 ? (
+          <mark key={`${part}-${index}`} className="bg-accent/20 text-ink">
+            {part}
+          </mark>
+        ) : (
+          <span key={`${part}-${index}`}>{part}</span>
+        )
+      )}
+    </>
+  );
+}
 
 interface ToolCardProps {
   tool: ToolItem;
   onSelect?: (tool: ToolItem) => void;
+  /** README excerpt shown when a search matched the project's documentation. */
+  matchSnippet?: string | null;
+  /** Query words to highlight inside the excerpt. */
+  matchTerms?: readonly string[];
 }
 
-export function ToolCard({ tool, onSelect }: ToolCardProps) {
+export function ToolCard({ tool, onSelect, matchSnippet, matchTerms }: ToolCardProps) {
   const category = categoryLabels[tool.category] ?? categoryLabels.other;
   const shownTags = tool.tags.slice(0, 2);
   const extraTags = tool.tags.length - shownTags.length;
@@ -145,6 +164,15 @@ export function ToolCard({ tool, onSelect }: ToolCardProps) {
       <p className="mt-1.5 line-clamp-2 text-[13px] leading-relaxed text-ink-muted">
         {tool.tagline}
       </p>
+
+      {matchSnippet && (
+        <p className="mt-2 line-clamp-2 text-[11px] leading-relaxed text-ink-dim">
+          <span className="mr-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-ink-dim">
+            readme
+          </span>
+          <HighlightedText text={matchSnippet} terms={matchTerms} />
+        </p>
+      )}
 
       <div className="mt-auto pt-5">
         <div className="flex items-center justify-between gap-3 border-t border-line pt-3">
