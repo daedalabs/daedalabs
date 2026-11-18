@@ -61,10 +61,22 @@ export function ToolCard({ tool, onSelect }: ToolCardProps) {
 
   return (
     <article className="group relative flex h-full flex-col rounded-lg border border-line bg-surface/40 p-4 transition-colors duration-200 hover:border-line-strong hover:bg-surface has-[[data-card-trigger]:focus-visible]:border-line-strong has-[[data-card-trigger]:focus-visible]:bg-surface has-[[data-card-trigger]:focus-visible]:ring-1 has-[[data-card-trigger]:focus-visible]:ring-accent/40">
-      <div className="flex items-center justify-between gap-3">
-        <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-dim">
-          {category}
-        </span>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-dim">
+            {category}
+          </span>
+          {tool.featured && (
+            <span className="rounded border border-accent/30 bg-accent-soft px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-accent">
+              featured
+            </span>
+          )}
+          {tool.status === 'archived' && (
+            <span className="rounded border border-line bg-surface/80 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-ink-dim">
+              archived
+            </span>
+          )}
+        </div>
 
         <div className="relative z-20 flex items-center gap-0.5">
           {stars > 0 && (

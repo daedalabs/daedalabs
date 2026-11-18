@@ -16,7 +16,7 @@ function safeCdata(str: string): string {
 }
 
 export async function GET() {
-  const [siteSettings, tools] = await Promise.all([getSiteSettings(), getAllTools()]);
+  const [siteSettings, { tools }] = await Promise.all([getSiteSettings(), getAllTools()]);
 
   const siteUrl = SITE_URL;
   const siteName = siteSettings?.name || 'Daedalabs';

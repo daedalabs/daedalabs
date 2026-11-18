@@ -406,6 +406,12 @@ html.theme-transition {
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  html.theme-transition {
+    transition: none !important;
+  }
+}
+
 /* Descendants should track the animated tokens, not re-animate each frame. */
 html.theme-transition *,
 html.theme-transition *::before,
