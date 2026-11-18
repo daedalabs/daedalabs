@@ -71,6 +71,61 @@ test.describe('End-to-End Smoke and Interaction Verification', () => {
     }
   });
 
+  test('when modal is open, background cannot be scrolled and body/html are locked', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    await expect(page.locator('[data-hydrated="true"]')).toBeVisible();
+
+    const firstCardTrigger = page.locator('[data-card-trigger]').first();
+    await firstCardTrigger.click();
+
+    const modal = page.locator('[role="dialog"]');
+    await expect(modal).toBeVisible();
+
+    // Both documentElement and body should have overflow: hidden
+    const { bodyOverflow, htmlOverflow } = await page.evaluate(() => ({
+      bodyOverflow: document.body.style.overflow,
+      htmlOverflow: document.documentElement.style.overflow,
+    }));
+    expect(bodyOverflow).toBe('hidden');
+    expect(htmlOverflow).toBe('hidden');
+
+    const scrollYBefore = await page.evaluate(() => window.scrollY);
+
+    // 1. Mouse wheel over backdrop overlay (outside dialog)
+    await page.mouse.move(20, 20);
+    await page.mouse.wheel(0, 500);
+    await page.waitForTimeout(200);
+    expect(await page.evaluate(() => window.scrollY)).toBe(scrollYBefore);
+
+    // 2. Mouse wheel over modal header
+    const modalHeader = modal.locator('header');
+    if ((await modalHeader.count()) > 0) {
+      const headerBox = await modalHeader.boundingBox();
+      if (headerBox) {
+        await page.mouse.move(
+          headerBox.x + headerBox.width / 2,
+          headerBox.y + headerBox.height / 2
+        );
+        await page.mouse.wheel(0, 500);
+        await page.waitForTimeout(200);
+        expect(await page.evaluate(() => window.scrollY)).toBe(scrollYBefore);
+      }
+    }
+
+    // 3. Close modal and confirm scroll lock is cleanly removed
+    await page.keyboard.press('Escape');
+    await expect(modal).not.toBeVisible();
+
+    const { bodyOverflowAfter, htmlOverflowAfter } = await page.evaluate(() => ({
+      bodyOverflowAfter: document.body.style.overflow,
+      htmlOverflowAfter: document.documentElement.style.overflow,
+    }));
+    expect(bodyOverflowAfter).toBe('');
+    expect(htmlOverflowAfter).toBe('');
+  });
+
   test('mobile 390px smoke: all controls accessible without overflow', async ({
     page,
   }) => {

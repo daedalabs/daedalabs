@@ -18,6 +18,7 @@ export function ToolModal({ tool, onClose }: ToolModalProps) {
   const [fetchedHtml, setFetchedHtml] = useState<Record<string, string>>({});
   const [fetchErrors, setFetchErrors] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(false);
+  const backdropRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const modalContainerRef = useRef<HTMLDivElement>(null);
 
@@ -64,13 +65,79 @@ export function ToolModal({ tool, onClose }: ToolModalProps) {
       }
     };
 
-    const originalOverflow = document.body.style.overflow;
+    const originalBodyOverflow = document.body.style.overflow;
+    const originalHtmlOverflow = document.documentElement.style.overflow;
+    const originalBodyPaddingRight = document.body.style.paddingRight;
+
+    // Compensate for disappearing scrollbar to avoid layout shift while locked
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+    if (scrollbarWidth > 0) {
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+    }
+
     document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+
+    // Prevent wheel and touch gestures on backdrop or at boundaries from scrolling the page behind
+    const backdropEl = backdropRef.current;
+
+    const handleWheel = (e: WheelEvent) => {
+      const scrollable = contentRef.current;
+      if (!scrollable || !scrollable.contains(e.target as Node)) {
+        if (e.cancelable) e.preventDefault();
+        return;
+      }
+
+      const { scrollTop, scrollHeight, clientHeight } = scrollable;
+      const isAtTop = scrollTop <= 0 && e.deltaY < 0;
+      const isAtBottom = scrollTop + clientHeight >= scrollHeight - 1 && e.deltaY > 0;
+
+      if ((isAtTop || isAtBottom) && e.cancelable) {
+        e.preventDefault();
+      }
+    };
+
+    let touchStartY = 0;
+    const handleTouchStart = (e: TouchEvent) => {
+      touchStartY = e.touches[0]?.clientY || 0;
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      const scrollable = contentRef.current;
+      if (!scrollable || !scrollable.contains(e.target as Node)) {
+        if (e.cancelable) e.preventDefault();
+        return;
+      }
+
+      const currentY = e.touches[0]?.clientY || 0;
+      const deltaY = currentY - touchStartY;
+      const { scrollTop, scrollHeight, clientHeight } = scrollable;
+      const isAtTop = scrollTop <= 0 && deltaY > 0;
+      const isAtBottom = scrollTop + clientHeight >= scrollHeight - 1 && deltaY < 0;
+
+      if ((isAtTop || isAtBottom) && e.cancelable) {
+        e.preventDefault();
+      }
+    };
+
+    if (backdropEl) {
+      backdropEl.addEventListener('wheel', handleWheel, { passive: false });
+      backdropEl.addEventListener('touchstart', handleTouchStart, { passive: true });
+      backdropEl.addEventListener('touchmove', handleTouchMove, { passive: false });
+    }
+
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
       clearTimeout(focusTimer);
-      document.body.style.overflow = originalOverflow;
+      document.body.style.overflow = originalBodyOverflow;
+      document.documentElement.style.overflow = originalHtmlOverflow;
+      document.body.style.paddingRight = originalBodyPaddingRight;
+      if (backdropEl) {
+        backdropEl.removeEventListener('wheel', handleWheel);
+        backdropEl.removeEventListener('touchstart', handleTouchStart);
+        backdropEl.removeEventListener('touchmove', handleTouchMove);
+      }
       window.removeEventListener('keydown', handleKeyDown);
       previouslyFocusedElement?.focus?.();
     };
@@ -131,7 +198,8 @@ export function ToolModal({ tool, onClose }: ToolModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 backdrop-blur-[2px] sm:items-center sm:p-6"
+      ref={backdropRef}
+      className="fixed inset-0 z-50 flex items-end justify-center overscroll-contain bg-black/70 p-0 backdrop-blur-[2px] sm:items-center sm:p-6"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -141,7 +209,7 @@ export function ToolModal({ tool, onClose }: ToolModalProps) {
       <div
         ref={modalContainerRef}
         tabIndex={-1}
-        className="relative flex max-h-[92svh] w-full max-w-3xl flex-col overflow-hidden rounded-t-xl border border-line bg-canvas shadow-2xl shadow-black/60 focus:outline-none sm:max-h-[90vh] sm:rounded-xl"
+        className="relative flex max-h-[92svh] w-full max-w-3xl flex-col overflow-hidden overscroll-contain rounded-t-xl border border-line bg-canvas shadow-2xl shadow-black/60 focus:outline-none sm:max-h-[90vh] sm:rounded-xl"
         onClick={(event) => event.stopPropagation()}
       >
         <header className="border-b border-line px-5 pb-5 pt-5 sm:px-7">
@@ -263,7 +331,7 @@ export function ToolModal({ tool, onClose }: ToolModalProps) {
 
         <div
           ref={contentRef}
-          className="flex-1 overflow-y-auto px-5 py-6 sm:px-7 sm:py-7"
+          className="flex-1 overflow-y-auto overscroll-contain px-5 py-6 sm:px-7 sm:py-7"
         >
           <CodeBlockEnhancer />
 

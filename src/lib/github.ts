@@ -258,9 +258,10 @@ export async function getRepoReadme(
  * Convert a GitHub repository into a unified ToolItem.
  */
 export function repoToToolItem(repo: GithubRepo) {
-  // Infer category from topics, name, or language
+  // Infer category from topics, name, description, or language
   let category:
     | 'byox'
+    | 'desktop'
     | 'web'
     | 'cli'
     | 'library'
@@ -271,6 +272,7 @@ export function repoToToolItem(repo: GithubRepo) {
     | 'other' = 'other';
   const topicsLower = repo.topics.map((t) => t.toLowerCase());
   const nameLower = repo.name.toLowerCase();
+  const descLower = (repo.description || '').toLowerCase();
 
   if (
     topicsLower.includes('byox') ||
@@ -283,6 +285,16 @@ export function repoToToolItem(repo: GithubRepo) {
     nameLower.startsWith('mini-')
   ) {
     category = 'byox';
+  } else if (
+    topicsLower.includes('desktop') ||
+    topicsLower.includes('electron') ||
+    topicsLower.includes('tauri') ||
+    topicsLower.includes('wails') ||
+    topicsLower.includes('gui') ||
+    topicsLower.includes('desktop-app') ||
+    /\bdesktop\b/i.test(descLower)
+  ) {
+    category = 'desktop';
   } else if (topicsLower.includes('cli') || topicsLower.includes('terminal')) {
     category = 'cli';
   } else if (
