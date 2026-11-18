@@ -37,6 +37,7 @@ interface ToolsExplorerProps {
 const ALL_CATEGORIES = [
   { id: 'all', label: 'All' },
   { id: 'byox', label: 'Build your own' },
+  { id: 'desktop', label: 'Desktop' },
   { id: 'web', label: 'Web apps' },
   { id: 'cli', label: 'CLI tools' },
   { id: 'hardware', label: 'Hardware' },

@@ -9,6 +9,7 @@ export interface ToolItem {
   status: 'live' | 'beta' | 'experiment' | 'archived';
   category:
     | 'byox'
+    | 'desktop'
     | 'web'
     | 'cli'
     | 'library'
@@ -34,6 +35,7 @@ export interface ToolItem {
 
 export const categoryLabels: Record<ToolItem['category'], string> = {
   byox: 'build your own',
+  desktop: 'desktop',
   web: 'web',
   cli: 'cli',
   library: 'library',
