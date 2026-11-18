@@ -144,4 +144,35 @@ test.describe('End-to-End Smoke and Interaction Verification', () => {
     const gridBtn = page.getByRole('button', { name: /Grid view/i }).first();
     await expect(gridBtn).toBeVisible();
   });
+
+  test('code block copy button is wrapped outside pre scroll container', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    await expect(page.locator('[data-hydrated="true"]')).toBeVisible();
+
+    const firstCardTrigger = page.locator('[data-card-trigger]').first();
+    if ((await firstCardTrigger.count()) > 0) {
+      await firstCardTrigger.click();
+
+      const modal = page.locator('[role="dialog"]');
+      await expect(modal).toBeVisible();
+
+      const codeWrapper = modal.locator('.code-block-wrapper').first();
+      if ((await codeWrapper.count()) > 0) {
+        const copyBtn = codeWrapper.getByRole('button', {
+          name: /copy code block/i,
+        });
+        await expect(copyBtn).toBeVisible();
+
+        // Ensure button is child of wrapper, NOT inside pre (so it does not scroll with text)
+        const isInsidePre = await codeWrapper.evaluate((el) => {
+          const btn = el.querySelector('button');
+          const pre = el.querySelector('pre');
+          return pre && btn ? pre.contains(btn) : false;
+        });
+        expect(isInsidePre).toBe(false);
+      }
+    }
+  });
 });

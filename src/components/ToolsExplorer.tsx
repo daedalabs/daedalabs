@@ -15,6 +15,7 @@ import { ToolModal } from './ToolModal';
 import { SiteHeader } from './SiteHeader';
 import { ThemeToggle } from './ThemeToggle';
 import { SortMenu, type SortOption } from './SortMenu';
+import { CategoryMenu } from './CategoryMenu';
 import { Kbd } from './Kbd';
 import { GithubIcon } from './icons/GithubIcon';
 
@@ -317,20 +318,16 @@ export function ToolsExplorer({
 
   // Smooth hero-to-catalog auto-snap navigation:
   // Tracks scroll position, docks header, scales hero, and snaps between hero and catalog.
-  // Respects prefers-reduced-motion. Cancels snap when user scrolls against it.
+  // Smooth cubic ease-out animation. Cancels snap when user scrolls against it.
   useEffect(() => {
     let frame: number | null = null;
-    const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 
     const snapTo = (targetY: number, duration = 400) => {
       if (selectedModalToolRef.current) return;
-      if (reducedMotionQuery.matches) {
-        window.scrollTo({ top: targetY, behavior: 'instant' });
-        return;
-      }
 
       if (animFrameRef.current !== null) {
         cancelAnimationFrame(animFrameRef.current);
+        animFrameRef.current = null;
       }
 
       const startY = window.scrollY;
@@ -356,7 +353,7 @@ export function ToolsExplorer({
 
         const elapsed = now - startTime;
         const progress = Math.min(1, elapsed / duration);
-        const currentTargetY = startY + distance * easeOut(progress);
+        const currentTargetY = Math.round(startY + distance * easeOut(progress));
 
         window.scrollTo(0, currentTargetY);
 
@@ -377,11 +374,11 @@ export function ToolsExplorer({
 
     snapToRef.current = snapTo;
 
-    const scheduleSnap = () => {
+    const scheduleSnap = (delay = 180) => {
       if (
         selectedModalToolRef.current ||
-        reducedMotionQuery.matches ||
-        isUserTouchingRef.current
+        isUserTouchingRef.current ||
+        isSnappingRef.current
       )
         return;
       if (snapTimerRef.current !== null) clearTimeout(snapTimerRef.current);
@@ -411,7 +408,7 @@ export function ToolsExplorer({
         }
 
         snapTo(target, 400);
-      }, 120);
+      }, delay);
     };
 
     const update = () => {
@@ -429,13 +426,8 @@ export function ToolsExplorer({
 
       const progress = Math.min(1, Math.max(0, scrollY / Math.max(1, heroHeight)));
       if (heroContentRef.current) {
-        if (reducedMotionQuery.matches) {
-          heroContentRef.current.style.transform = 'none';
-          heroContentRef.current.style.opacity = '1';
-        } else {
-          heroContentRef.current.style.transform = `scale(${1 - HERO_SCALE * progress})`;
-          heroContentRef.current.style.opacity = `${1 - 0.25 * progress}`;
-        }
+        heroContentRef.current.style.transform = `scale(${1 - HERO_SCALE * progress})`;
+        heroContentRef.current.style.opacity = `${1 - 0.25 * progress}`;
       }
     };
 
@@ -444,8 +436,33 @@ export function ToolsExplorer({
       frame = requestAnimationFrame(() => {
         frame = null;
         update();
+        if (!isSnappingRef.current && !isUserTouchingRef.current) {
+          scheduleSnap(180);
+        }
       });
-      scheduleSnap();
+    };
+
+    const onScrollEnd = () => {
+      if (
+        selectedModalToolRef.current ||
+        isUserTouchingRef.current ||
+        isSnappingRef.current
+      )
+        return;
+      const scrollY = window.scrollY;
+      const heroHeight = heroSectionRef.current?.offsetHeight || window.innerHeight;
+      const dock = Math.max(0, heroHeight - HEADER_OFFSET);
+      if (scrollY <= 8 || scrollY >= dock - 8) return;
+
+      let target: number;
+      if (lastDirectionRef.current === 'down') {
+        target = scrollY >= Math.min(80, dock * 0.15) ? dock : 0;
+      } else if (lastDirectionRef.current === 'up') {
+        target = scrollY <= Math.max(dock - 80, dock * 0.85) ? 0 : dock;
+      } else {
+        target = scrollY > dock * 0.45 ? dock : 0;
+      }
+      snapTo(target, 400);
     };
 
     const onTouchStart = () => {
@@ -466,7 +483,7 @@ export function ToolsExplorer({
 
     const onTouchEnd = () => {
       isUserTouchingRef.current = false;
-      scheduleSnap();
+      scheduleSnap(260);
     };
 
     const onResize = () => {
@@ -543,6 +560,9 @@ export function ToolsExplorer({
     window.addEventListener('touchstart', onTouchStart, { passive: true });
     window.addEventListener('touchend', onTouchEnd, { passive: true });
     window.addEventListener('touchcancel', onTouchEnd, { passive: true });
+    if ('onscrollend' in window) {
+      window.addEventListener('scrollend', onScrollEnd);
+    }
     update();
 
     return () => {
@@ -552,6 +572,9 @@ export function ToolsExplorer({
       window.removeEventListener('touchstart', onTouchStart);
       window.removeEventListener('touchend', onTouchEnd);
       window.removeEventListener('touchcancel', onTouchEnd);
+      if ('onscrollend' in window) {
+        window.removeEventListener('scrollend', onScrollEnd);
+      }
       if (frame !== null) cancelAnimationFrame(frame);
       if (animFrameRef.current !== null) cancelAnimationFrame(animFrameRef.current);
       if (snapTimerRef.current !== null) {
@@ -715,21 +738,12 @@ export function ToolsExplorer({
         actions={
           isScrolled ? (
             <div className="flex items-center gap-1 sm:gap-1.5">
-              <label htmlFor="header-category" className="sr-only">
-                Category
-              </label>
-              <select
-                id="header-category"
+              <CategoryMenu
+                categories={categories}
                 value={selectedCategory}
-                onChange={(e) => handleSelectCategory(e.target.value)}
-                className="hidden md:inline-flex h-9 rounded-md border border-line bg-surface/60 px-2 font-mono text-[11px] text-ink-muted transition-colors hover:border-line-strong hover:text-ink focus:outline-none"
-              >
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id} className="bg-elevated text-ink">
-                    {c.label}
-                  </option>
-                ))}
-              </select>
+                onChange={handleSelectCategory}
+                className="hidden sm:inline-block"
+              />
               <SortMenu value={sortBy} onChange={handleSelectSort} />
               <button
                 type="button"
