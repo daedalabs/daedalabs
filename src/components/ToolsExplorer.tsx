@@ -196,6 +196,20 @@ export function ToolsExplorer({
   const headerInputRef = useRef<HTMLInputElement>(null);
   const heroSectionRef = useRef<HTMLElement>(null);
   const heroContentRef = useRef<HTMLDivElement>(null);
+  const isSnappingRef = useRef(false);
+  const targetYRef = useRef<number | null>(null);
+  const lastDirectionRef = useRef<'down' | 'up' | null>(null);
+  const lastScrollYRef = useRef(0);
+  const isTrackpadRef = useRef(false);
+  const gestureTimerRef = useRef<number | null>(null);
+  const isUserTouchingRef = useRef(false);
+  const animFrameRef = useRef<number | null>(null);
+  const snapToRef = useRef<((targetY: number, duration?: number) => void) | null>(null);
+  const snapTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const selectedModalToolRef = useRef<ToolItem | null>(null);
+  useEffect(() => {
+    selectedModalToolRef.current = selectedModalTool;
+  }, [selectedModalTool]);
 
   // Derive categories populated from tools actually present in the data, always including 'all'
   const categories = useMemo(() => {
@@ -301,25 +315,124 @@ export function ToolsExplorer({
     return () => window.removeEventListener('popstate', onPopState);
   }, [initialTools]);
 
-  // Native smooth scrolling:
-  // Tracks scroll position for the docked header reveal and optional hero visual scaling.
-  // Respects prefers-reduced-motion. No wheel hijacking or preventDefault().
+  // Smooth hero-to-catalog auto-snap navigation:
+  // Tracks scroll position, docks header, scales hero, and snaps between hero and catalog.
+  // Respects prefers-reduced-motion. Cancels snap when user scrolls against it.
   useEffect(() => {
     let frame: number | null = null;
     const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 
+    const snapTo = (targetY: number, duration = 400) => {
+      if (selectedModalToolRef.current) return;
+      if (reducedMotionQuery.matches) {
+        window.scrollTo({ top: targetY, behavior: 'instant' });
+        return;
+      }
+
+      if (animFrameRef.current !== null) {
+        cancelAnimationFrame(animFrameRef.current);
+      }
+
+      const startY = window.scrollY;
+      const distance = targetY - startY;
+      if (Math.abs(distance) < 2) {
+        window.scrollTo(0, targetY);
+        isSnappingRef.current = false;
+        targetYRef.current = null;
+        return;
+      }
+
+      isSnappingRef.current = true;
+      targetYRef.current = targetY;
+      const startTime = performance.now();
+      const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
+
+      const step = (now: number) => {
+        if (!isSnappingRef.current) {
+          animFrameRef.current = null;
+          targetYRef.current = null;
+          return;
+        }
+
+        const elapsed = now - startTime;
+        const progress = Math.min(1, elapsed / duration);
+        const currentTargetY = startY + distance * easeOut(progress);
+
+        window.scrollTo(0, currentTargetY);
+
+        if (progress < 1) {
+          animFrameRef.current = requestAnimationFrame(step);
+        } else {
+          animFrameRef.current = null;
+          window.scrollTo(0, targetY);
+          setTimeout(() => {
+            isSnappingRef.current = false;
+            targetYRef.current = null;
+          }, 80);
+        }
+      };
+
+      animFrameRef.current = requestAnimationFrame(step);
+    };
+
+    snapToRef.current = snapTo;
+
+    const scheduleSnap = () => {
+      if (
+        selectedModalToolRef.current ||
+        reducedMotionQuery.matches ||
+        isUserTouchingRef.current
+      )
+        return;
+      if (snapTimerRef.current !== null) clearTimeout(snapTimerRef.current);
+
+      snapTimerRef.current = setTimeout(() => {
+        snapTimerRef.current = null;
+        if (
+          selectedModalToolRef.current ||
+          isUserTouchingRef.current ||
+          isSnappingRef.current
+        )
+          return;
+        const scrollY = window.scrollY;
+        const heroHeight = heroSectionRef.current?.offsetHeight || window.innerHeight;
+        const dock = Math.max(0, heroHeight - HEADER_OFFSET);
+
+        // Only snap if currently stopped in the overlap between hero and catalog
+        if (scrollY <= 8 || scrollY >= dock - 8) return;
+
+        let target: number;
+        if (lastDirectionRef.current === 'down') {
+          target = scrollY >= Math.min(80, dock * 0.15) ? dock : 0;
+        } else if (lastDirectionRef.current === 'up') {
+          target = scrollY <= Math.max(dock - 80, dock * 0.85) ? 0 : dock;
+        } else {
+          target = scrollY > dock * 0.45 ? dock : 0;
+        }
+
+        snapTo(target, 400);
+      }, 120);
+    };
+
     const update = () => {
       const scrollY = window.scrollY;
+      const heroHeight = heroSectionRef.current?.offsetHeight || window.innerHeight;
       const scrolled = scrollY > HEADER_OFFSET;
+
       setIsScrolled(scrolled);
 
+      const diff = scrollY - lastScrollYRef.current;
+      if (Math.abs(diff) >= 2) {
+        lastDirectionRef.current = diff > 0 ? 'down' : 'up';
+      }
+      lastScrollYRef.current = scrollY;
+
+      const progress = Math.min(1, Math.max(0, scrollY / Math.max(1, heroHeight)));
       if (heroContentRef.current) {
         if (reducedMotionQuery.matches) {
           heroContentRef.current.style.transform = 'none';
           heroContentRef.current.style.opacity = '1';
         } else {
-          const heroHeight = heroSectionRef.current?.offsetHeight || window.innerHeight;
-          const progress = Math.min(1, Math.max(0, scrollY / Math.max(1, heroHeight)));
           heroContentRef.current.style.transform = `scale(${1 - HERO_SCALE * progress})`;
           heroContentRef.current.style.opacity = `${1 - 0.25 * progress}`;
         }
@@ -332,14 +445,121 @@ export function ToolsExplorer({
         frame = null;
         update();
       });
+      scheduleSnap();
+    };
+
+    const onTouchStart = () => {
+      isUserTouchingRef.current = true;
+      if (isSnappingRef.current) {
+        isSnappingRef.current = false;
+        targetYRef.current = null;
+        if (animFrameRef.current !== null) {
+          cancelAnimationFrame(animFrameRef.current);
+          animFrameRef.current = null;
+        }
+      }
+      if (snapTimerRef.current !== null) {
+        clearTimeout(snapTimerRef.current);
+        snapTimerRef.current = null;
+      }
+    };
+
+    const onTouchEnd = () => {
+      isUserTouchingRef.current = false;
+      scheduleSnap();
+    };
+
+    const onResize = () => {
+      update();
+    };
+
+    const onWheel = (e: WheelEvent) => {
+      if (selectedModalToolRef.current) return;
+
+      // 1. Gesture detection: Trackpad vs discrete mouse wheel detents
+      if (gestureTimerRef.current !== null) {
+        window.clearTimeout(gestureTimerRef.current);
+      }
+      gestureTimerRef.current = window.setTimeout(() => {
+        gestureTimerRef.current = null;
+        isTrackpadRef.current = false;
+      }, 160);
+
+      if (!isTrackpadRef.current) {
+        const isLineOrPage = e.deltaMode !== 0;
+        const isFractional = !Number.isInteger(e.deltaY) || !Number.isInteger(e.deltaX);
+        const hasHorizontal = Math.abs(e.deltaX) > 0.1;
+        const isSmallDelta = Math.abs(e.deltaY) < 40;
+
+        if (!isLineOrPage && (isFractional || hasHorizontal || isSmallDelta)) {
+          isTrackpadRef.current = true;
+        }
+      }
+
+      // 2. Cancellation check: Only yield control if user intentionally scrolls against active snap
+      if (isSnappingRef.current && targetYRef.current !== null) {
+        const isMovingDown = targetYRef.current > window.scrollY;
+        const isOpposing = isMovingDown ? e.deltaY < -12 : e.deltaY > 12;
+
+        if (isOpposing) {
+          isSnappingRef.current = false;
+          targetYRef.current = null;
+          if (animFrameRef.current !== null) {
+            cancelAnimationFrame(animFrameRef.current);
+            animFrameRef.current = null;
+          }
+        }
+      }
+
+      // 3. Discrete mouse wheel navigation in the hero-to-catalog transition region
+      if (!isTrackpadRef.current) {
+        const scrollY = window.scrollY;
+        const heroHeight = heroSectionRef.current?.offsetHeight || window.innerHeight;
+        const dock = Math.max(0, heroHeight - HEADER_OFFSET);
+
+        // Case A: At or near the hero, scrolling down
+        if (e.deltaY > 0 && scrollY < dock - 2) {
+          e.preventDefault();
+          if (isSnappingRef.current && targetYRef.current === dock) return;
+          lastDirectionRef.current = 'down';
+          snapTo(dock, 400);
+          return;
+        }
+
+        // Case B: At the catalog top boundary, scrolling up into the hero
+        if (e.deltaY < 0 && scrollY <= dock + 2 && scrollY > 8) {
+          e.preventDefault();
+          if (isSnappingRef.current && targetYRef.current === 0) return;
+          lastDirectionRef.current = 'up';
+          snapTo(0, 400);
+          return;
+        }
+      }
     };
 
     window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onResize);
+    window.addEventListener('wheel', onWheel, { passive: false });
+    window.addEventListener('touchstart', onTouchStart, { passive: true });
+    window.addEventListener('touchend', onTouchEnd, { passive: true });
+    window.addEventListener('touchcancel', onTouchEnd, { passive: true });
     update();
 
     return () => {
       window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('wheel', onWheel);
+      window.removeEventListener('touchstart', onTouchStart);
+      window.removeEventListener('touchend', onTouchEnd);
+      window.removeEventListener('touchcancel', onTouchEnd);
       if (frame !== null) cancelAnimationFrame(frame);
+      if (animFrameRef.current !== null) cancelAnimationFrame(animFrameRef.current);
+      if (snapTimerRef.current !== null) {
+        clearTimeout(snapTimerRef.current);
+        snapTimerRef.current = null;
+      }
+      if (gestureTimerRef.current !== null) clearTimeout(gestureTimerRef.current);
+      snapToRef.current = null;
     };
   }, []);
 
@@ -347,13 +567,18 @@ export function ToolsExplorer({
   const scrollToTools = useCallback(() => {
     const heroH = heroSectionRef.current?.offsetHeight || window.innerHeight;
     const dock = Math.max(0, heroH - HEADER_OFFSET);
-    const prefersReducedMotion = window.matchMedia(
-      '(prefers-reduced-motion: reduce)'
-    ).matches;
-    window.scrollTo({
-      top: dock,
-      behavior: prefersReducedMotion ? 'instant' : 'smooth',
-    });
+    lastDirectionRef.current = 'down';
+    if (snapToRef.current) {
+      snapToRef.current(dock, 480);
+    } else {
+      const prefersReducedMotion = window.matchMedia(
+        '(prefers-reduced-motion: reduce)'
+      ).matches;
+      window.scrollTo({
+        top: dock,
+        behavior: prefersReducedMotion ? 'instant' : 'smooth',
+      });
+    }
   }, []);
 
   useEffect(() => {
@@ -449,11 +674,23 @@ export function ToolsExplorer({
   };
 
   const handleSelectTool = (tool: ToolItem) => {
+    selectedModalToolRef.current = tool;
+    if (snapTimerRef.current !== null) {
+      clearTimeout(snapTimerRef.current);
+      snapTimerRef.current = null;
+    }
+    if (animFrameRef.current !== null) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
+    }
+    isSnappingRef.current = false;
+    targetYRef.current = null;
     setSelectedModalTool(tool);
     updateUrl(search, selectedCategory, sortBy, viewMode, tool, true);
   };
 
   const handleCloseModal = () => {
+    selectedModalToolRef.current = null;
     setSelectedModalTool(null);
     updateUrl(search, selectedCategory, sortBy, viewMode, null, false);
   };
