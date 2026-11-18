@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import crypto from 'node:crypto';
 
 test.describe('Daedalabs Website', () => {
   test('homepage renders cleanly without intro marketing text, stats, or CMS remnants', async ({
@@ -70,32 +71,75 @@ test.describe('Daedalabs Website', () => {
     await expect(searchInput).toHaveValue('');
   });
 
-  test('category filter pills and live/beta status badges are removed', async ({
-    page,
-  }) => {
+  test('selecting a category filters projects and updates URL', async ({ page }) => {
     await page.goto('/');
+    await expect(page.locator('[data-hydrated="true"]')).toBeVisible();
 
-    // Category pills should NOT exist
-    await expect(page.getByRole('button', { name: 'Build your own' })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Web apps' })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'CLI tools' })).toHaveCount(0);
+    // Initial state has 'All' selected
+    const allCategoryBtn = page.getByRole('button', { name: 'All' });
+    await expect(allCategoryBtn).toHaveAttribute('aria-pressed', 'true');
 
-    // Live and beta status badges should NOT exist
-    await expect(page.locator('body')).not.toContainText('● live');
-    await expect(page.locator('body')).not.toContainText('● beta');
-    await expect(page.locator('body')).not.toContainText('● experiment');
-
-    // Status dropdown should NOT exist
-    await expect(page.locator('option[value="live"]')).toHaveCount(0);
+    // Click category button if present in dataset
+    const byoxBtn = page.getByRole('button', { name: 'Build your own' });
+    if ((await byoxBtn.count()) > 0) {
+      await byoxBtn.click();
+      await expect(byoxBtn).toHaveAttribute('aria-pressed', 'true');
+      await expect(allCategoryBtn).toHaveAttribute('aria-pressed', 'false');
+      await expect(page).toHaveURL(/category=byox/);
+      await expect(page.locator('text=category: Build your own')).toBeVisible();
+    }
   });
 
-  test('URL query parameter (?category=byox) sets category filter state', async ({
+  test('sort and view controls are visible and usable at 390px width without horizontal overflow', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/');
+    await expect(page.locator('[data-hydrated="true"]')).toBeVisible();
+
+    // Verify page does not have horizontal overflow
+    const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect(scrollWidth).toBeLessThanOrEqual(390);
+
+    // Check SortMenu is visible (no hidden sm:block)
+    const sortButton = page.getByRole('button', { name: /Sort projects/i }).first();
+    await expect(sortButton).toBeVisible();
+
+    // Check ViewToggle controls are visible and clickable
+    const gridViewBtn = page.getByRole('button', { name: /Grid view/i }).first();
+    const listViewBtn = page.getByRole('button', { name: /Compact list view/i }).first();
+    await expect(gridViewBtn).toBeVisible();
+    await expect(listViewBtn).toBeVisible();
+
+    // Test interacting with view toggle at 390px
+    await listViewBtn.click();
+    await expect(listViewBtn).toHaveAttribute('aria-pressed', 'true');
+
+    await gridViewBtn.click();
+    await expect(gridViewBtn).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  test('URL query parameter (?category=byox) sets category filter state and filters results', async ({
     page,
   }) => {
     await page.goto('/?category=byox');
+    await expect(page.locator('[data-hydrated="true"]')).toBeVisible();
 
     // Active filter badge should be visible
     await expect(page.locator('text=category: Build your own')).toBeVisible();
+
+    // Category button should have aria-pressed=true
+    const byoxBtn = page.getByRole('button', { name: 'Build your own' });
+    if ((await byoxBtn.count()) > 0) {
+      await expect(byoxBtn).toHaveAttribute('aria-pressed', 'true');
+    }
+
+    // Every rendered card must belong to 'build your own'
+    const articles = page.locator('article');
+    const count = await articles.count();
+    for (let i = 0; i < count; i++) {
+      await expect(articles.nth(i)).toContainText(/build your own/i);
+    }
   });
 
   test('theme toggle switches theme and remembers the choice', async ({ page }) => {
@@ -159,17 +203,38 @@ test.describe('Daedalabs Website', () => {
     expect(json.endpoint).toBe('/api/webhook/github');
   });
 
-  test('GitHub webhook POST endpoint handles ping events', async ({ request }) => {
+  test('GitHub webhook POST endpoint handles ping events with valid signature', async ({
+    request,
+  }) => {
+    const secret = process.env.GITHUB_WEBHOOK_SECRET || 'test-webhook-secret';
+    const body = JSON.stringify({ zen: 'Keep it logically awesome.' });
+    const signature =
+      'sha256=' + crypto.createHmac('sha256', secret).update(body).digest('hex');
+
+    const res = await request.post('/api/webhook/github', {
+      headers: {
+        'x-github-event': 'ping',
+        'x-hub-signature-256': signature,
+      },
+      data: body,
+    });
+    expect(res.ok()).toBeTruthy();
+    const json = await res.json();
+    expect(json.received).toBe(true);
+    expect(json.event).toBe('ping');
+  });
+
+  test('GitHub webhook POST endpoint rejects unauthenticated requests in production', async ({
+    request,
+  }) => {
     const res = await request.post('/api/webhook/github', {
       headers: {
         'x-github-event': 'ping',
       },
       data: JSON.stringify({ zen: 'Keep it logically awesome.' }),
     });
-    expect(res.ok()).toBeTruthy();
-    const json = await res.json();
-    expect(json.received).toBe(true);
-    expect(json.event).toBe('ping');
+    // With GITHUB_WEBHOOK_SECRET set in production, missing signature returns 401
+    expect(res.status()).toBe(401);
   });
 
   test('robots.txt returns correct crawl directives and sitemap link', async ({
@@ -248,32 +313,29 @@ test.describe('Daedalabs Website', () => {
     const initialScrollY = await page.evaluate(() => window.scrollY);
     expect(initialScrollY).toBe(0);
 
-    // Roll mouse wheel down one notch
-    await page.mouse.wheel(0, 100);
+    // Roll mouse wheel down
+    await page.mouse.wheel(0, 300);
 
-    // Should smoothly scroll towards catalog dock position
+    // Should natively scroll downwards
     await expect
       .poll(async () => page.evaluate(() => window.scrollY), {
         timeout: 5000,
         intervals: [100, 200, 300],
       })
-      .toBeGreaterThan(300);
+      .toBeGreaterThan(0);
 
-    // Wait for snap animation to finish settling at dock
-    await page.waitForTimeout(600);
-    const dockedScrollY = await page.evaluate(() => window.scrollY);
-    expect(dockedScrollY).toBeGreaterThan(400);
+    const scrolledY = await page.evaluate(() => window.scrollY);
 
-    // Roll mouse wheel up one notch from dock
-    await page.mouse.wheel(0, -100);
+    // Roll mouse wheel back up
+    await page.mouse.wheel(0, -scrolledY);
 
-    // Should smoothly scroll back to top of the hero
+    // Should scroll back towards the top
     await expect
       .poll(async () => page.evaluate(() => window.scrollY), {
         timeout: 5000,
         intervals: [100, 200, 300],
       })
-      .toBeLessThan(50);
+      .toBeLessThan(scrolledY);
   });
 
   test('SEO metadata dynamically includes site information, OpenGraph, and JSON-LD schema', async ({

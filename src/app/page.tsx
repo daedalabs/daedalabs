@@ -10,7 +10,8 @@ export async function generateMetadata(): Promise<Metadata> {
   'use cache';
   cacheLife('minutes');
   cacheTag('github-repos');
-  const [site, tools] = await Promise.all([getSiteSettings(), getAllTools()]);
+  const [site, toolsResult] = await Promise.all([getSiteSettings(), getAllTools()]);
+  const tools = toolsResult.tools;
   const siteUrl = SITE_URL;
 
   const toolNames = tools.map((t) => t.name);
@@ -89,7 +90,8 @@ export default async function HomePage() {
   'use cache';
   cacheLife('minutes');
   cacheTag('github-repos');
-  const [site, tools] = await Promise.all([getSiteSettings(), getAllTools()]);
+  const [site, toolsResult] = await Promise.all([getSiteSettings(), getAllTools()]);
+  const { tools, status: syncStatus, isStale } = toolsResult;
 
   const websiteJsonLd = {
     '@context': 'https://schema.org',
@@ -172,6 +174,12 @@ export default async function HomePage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-canvas text-ink">
+      <a
+        href="#tools"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-md focus:border focus:border-line focus:bg-canvas focus:px-3 focus:py-2 focus:text-[13px] focus:font-medium focus:text-ink focus:shadow-lg focus:outline-none"
+      >
+        Skip to projects
+      </a>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
@@ -186,7 +194,12 @@ export default async function HomePage() {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }}
         />
       )}
-      <ToolsExplorer initialTools={tools} site={site} />
+      <ToolsExplorer
+        initialTools={tools}
+        site={site}
+        syncStatus={syncStatus}
+        isStale={isStale}
+      />
       <Footer
         siteName={site.name}
         authorName={site.authorName}

@@ -29,5 +29,9 @@ export default defineConfig({
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 60000,
+    env: {
+      GITHUB_WEBHOOK_SECRET: 'test-webhook-secret',
+      ...process.env,
+    },
   },
 });

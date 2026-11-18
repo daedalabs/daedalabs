@@ -3,7 +3,7 @@ import { getAllTools } from '@/lib/tools';
 import { SITE_URL } from '@/lib/site';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const tools = await getAllTools();
+  const { tools } = await getAllTools();
   const siteUrl = SITE_URL;
 
   const toolRoutes = tools.map((tool) => ({

@@ -148,6 +148,22 @@ export function ToolModal({ tool, onClose }: ToolModalProps) {
           <div className="flex items-start justify-between gap-4">
             <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 pt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim">
               <span>{categoryLabels[tool.category] ?? categoryLabels.other}</span>
+              {tool.featured && (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <span className="rounded border border-accent/30 bg-accent-soft px-1.5 py-0.5 text-accent">
+                    featured
+                  </span>
+                </>
+              )}
+              {tool.status === 'archived' && (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <span className="rounded border border-line bg-surface/80 px-1.5 py-0.5 text-ink-dim">
+                    archived
+                  </span>
+                </>
+              )}
               {tool.releaseDate && (
                 <>
                   <span aria-hidden="true">·</span>

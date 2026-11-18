@@ -119,7 +119,7 @@ export default async function ToolDetailPage({ params }: PageProps) {
   const { slug } = await params;
   cacheLife('minutes');
   cacheTag('github-repos', `github-tool-${slug}`, `github-readme-${slug}`);
-  const [site, detail, allTools] = await Promise.all([
+  const [site, detail, toolsResult] = await Promise.all([
     getSiteSettings(),
     getToolDetail(slug),
     getAllTools(),
@@ -129,7 +129,7 @@ export default async function ToolDetailPage({ params }: PageProps) {
 
   const { tool, readmeHtml, readmeMarkdown } = detail;
   const category = categoryLabels[tool.category] ?? categoryLabels.other;
-  const otherTools = allTools.filter((entry) => entry.slug !== slug).slice(0, 4);
+  const otherTools = toolsResult.tools.filter((entry) => entry.slug !== slug).slice(0, 4);
 
   const readmeSummary = extractSummaryFromReadme(readmeMarkdown);
   const richDescription =
@@ -241,6 +241,22 @@ export default async function ToolDetailPage({ params }: PageProps) {
         <header className="mt-8 border-b border-line pb-8">
           <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim">
             <span>{category}</span>
+            {tool.status === 'archived' && (
+              <>
+                <span aria-hidden="true">·</span>
+                <span className="rounded border border-line bg-surface/80 px-1.5 py-0.5 text-ink-dim">
+                  archived
+                </span>
+              </>
+            )}
+            {tool.featured && (
+              <>
+                <span aria-hidden="true">·</span>
+                <span className="rounded border border-accent/30 bg-accent-soft px-1.5 py-0.5 text-accent">
+                  featured
+                </span>
+              </>
+            )}
             {tool.releaseDate && (
               <>
                 <span aria-hidden="true">·</span>
@@ -343,6 +359,14 @@ export default async function ToolDetailPage({ params }: PageProps) {
                   Category
                 </dt>
                 <dd className="text-[12px] text-ink-muted">{category}</dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-4 py-2.5">
+                <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim">
+                  Status
+                </dt>
+                <dd className="font-mono text-[11px] uppercase tracking-[0.08em] text-ink-muted">
+                  {tool.status}
+                </dd>
               </div>
               {tool.releaseDate && (
                 <div className="flex items-baseline justify-between gap-4 py-2.5">

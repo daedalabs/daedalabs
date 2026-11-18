@@ -22,10 +22,19 @@ The site runs at `http://localhost:3000`.
 ## Architecture
 
 - `src/lib/github.ts`: Queries the GitHub API for organization repositories and reads raw READMEs.
-- `src/lib/tools.ts`: Unifies GitHub repositories and optional local entries.
-- `src/app/page.tsx`: Homepage with category and status filters.
+- `src/lib/tools.ts`: Unifies GitHub repositories, fallback snapshots, and metadata.
+- `src/lib/markdown.ts`: Pure, sanitized Markdown/GFM renderer with relative asset resolution and XSS protection.
+- `src/content/projects.snapshot.json`: Checked-in last-known-good fallback snapshot for resilience during GitHub API outages or rate limits.
+- `src/app/page.tsx`: Homepage with category discovery, sort, view toggles, and search.
 - `src/app/tools/[slug]/page.tsx`: Detail page rendering the project's README.
-- `src/app/api/webhook/github/route.ts`: Optional webhook to revalidate the cache when repos change.
+- `src/app/api/webhook/github/route.ts`: Webhook to revalidate the cache when repos change.
+
+## Environment Variables
+
+- `GITHUB_TOKEN` (**Required in production**): A GitHub Personal Access Token (classic or fine-grained with read access to public repos). Without a token, GitHub limits unauthenticated requests to 60/hour, which can cause rate-limit failures during Next.js ISR builds and revalidations. With a token, the limit increases to 5,000/hour.
+- `GITHUB_WEBHOOK_SECRET` (**Required in production**): Secret key configured on the GitHub organization webhook to cryptographically verify incoming payload signatures (HMAC SHA-256) before purging ISR cache tags.
+- `GITHUB_ORG` (Optional): GitHub organization name (defaults to `daedalabs`).
+- `NEXT_PUBLIC_SITE_URL` (Optional): Public site URL (defaults to `https://daedalabs.tech`).
 
 ## Deployment
 

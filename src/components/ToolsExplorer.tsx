@@ -30,13 +30,16 @@ interface SiteInfo {
 interface ToolsExplorerProps {
   initialTools: ToolItem[];
   site?: SiteInfo;
+  syncStatus?: 'fresh' | 'cached' | 'unavailable';
+  isStale?: boolean;
 }
 
-const CATEGORIES = [
+const ALL_CATEGORIES = [
   { id: 'all', label: 'All' },
   { id: 'byox', label: 'Build your own' },
   { id: 'web', label: 'Web apps' },
   { id: 'cli', label: 'CLI tools' },
+  { id: 'hardware', label: 'Hardware' },
   { id: 'microservice', label: 'Microservices' },
   { id: 'automation', label: 'Automation' },
   { id: 'ai', label: 'AI' },
@@ -169,7 +172,11 @@ function ViewToggle({ value, onChange }: ViewToggleProps) {
   );
 }
 
-export function ToolsExplorer({ initialTools, site }: ToolsExplorerProps) {
+export function ToolsExplorer({
+  initialTools,
+  site,
+  isStale = false,
+}: ToolsExplorerProps) {
   const siteInfo = site || DEFAULT_SITE;
   const isHydrated = useSyncExternalStore(
     emptySubscribe,
@@ -188,19 +195,47 @@ export function ToolsExplorer({ initialTools, site }: ToolsExplorerProps) {
   const headerInputRef = useRef<HTMLInputElement>(null);
   const heroSectionRef = useRef<HTMLElement>(null);
   const heroContentRef = useRef<HTMLDivElement>(null);
-  const isSnappingRef = useRef(false);
-  const targetYRef = useRef<number | null>(null);
-  const lastDirectionRef = useRef<'down' | 'up' | null>(null);
-  const lastScrollYRef = useRef(0);
-  const isTrackpadRef = useRef(false);
-  const gestureTimerRef = useRef<number | null>(null);
-  const isUserTouchingRef = useRef(false);
-  const animFrameRef = useRef<number | null>(null);
-  const snapToRef = useRef<((targetY: number, duration?: number) => void) | null>(null);
 
-  // Restore filters from the URL and the saved view preference after hydration.
-  // The server-rendered markup has to match the default state, so URL state can
-  // only be applied once the client takes over.
+  // Derive categories populated from tools actually present in the data, always including 'all'
+  const categories = useMemo(() => {
+    const present = new Set(initialTools.map((t) => t.category));
+    return ALL_CATEGORIES.filter(
+      (entry) => entry.id === 'all' || present.has(entry.id as ToolItem['category'])
+    );
+  }, [initialTools]);
+
+  // Keep URL updated without full navigation
+  const updateUrl = useCallback(
+    (
+      newSearch: string,
+      newCategory: string,
+      newSort: SortOption,
+      newView: ViewMode,
+      modalTool: ToolItem | null,
+      push = false
+    ) => {
+      const params = new URLSearchParams();
+      if (newSearch.trim()) params.set('q', newSearch.trim());
+      if (newCategory !== 'all') params.set('category', newCategory);
+      if (newSort !== 'newest') params.set('sort', newSort);
+      if (newView !== 'grid') params.set('view', newView);
+      if (modalTool) params.set('tool', modalTool.slug);
+
+      const queryString = params.toString();
+      const nextUrl = queryString
+        ? `${window.location.pathname}?${queryString}`
+        : window.location.pathname;
+
+      if (push) {
+        window.history.pushState(null, '', nextUrl);
+      } else {
+        window.history.replaceState(null, '', nextUrl);
+      }
+    },
+    []
+  );
+
+  // Restore filters from the URL and saved view preference after hydration.
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -209,7 +244,7 @@ export function ToolsExplorer({ initialTools, site }: ToolsExplorerProps) {
     if (query) setSearch(query);
 
     const category = params.get('category');
-    if (category && CATEGORIES.some((entry) => entry.id === category)) {
+    if (category && ALL_CATEGORIES.some((entry) => entry.id === category)) {
       setSelectedCategory(category);
     }
 
@@ -227,143 +262,66 @@ export function ToolsExplorer({ initialTools, site }: ToolsExplorerProps) {
   }, [initialTools]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  // Keep the URL shareable without triggering a navigation.
+  // Popstate listener: Back / Forward updates search, category, sort, view, and open modal
   useEffect(() => {
-    const params = new URLSearchParams();
-    if (search.trim()) params.set('q', search.trim());
-    if (selectedCategory !== 'all') params.set('category', selectedCategory);
-    if (sortBy !== 'newest') params.set('sort', sortBy);
-    if (viewMode !== 'grid') params.set('view', viewMode);
-    if (selectedModalTool) params.set('tool', selectedModalTool.slug);
+    const onPopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      setSearch(params.get('q') || '');
 
-    const queryString = params.toString();
-    const nextUrl = queryString
-      ? `${window.location.pathname}?${queryString}`
-      : window.location.pathname;
-    window.history.replaceState(null, '', nextUrl);
-  }, [search, selectedCategory, sortBy, viewMode, selectedModalTool]);
+      const category = params.get('category');
+      if (category && ALL_CATEGORIES.some((entry) => entry.id === category)) {
+        setSelectedCategory(category);
+      } else {
+        setSelectedCategory('all');
+      }
 
-  /**
-   * Sticky-scroll reveal with animated auto-snap:
-   * 1. The hero pins in place (via CSS position: sticky) while the catalog
-   *    slides over it.
-   * 2. The inner content wrapper scales and fades via GPU transforms (never
-   *    affecting the sticky section itself, which keeps Firefox & WebKit stable).
-   * 3. When a scroll comes to rest midway between the hero and catalog on any
-   *    device (MacBook trackpad inertia, mobile touch momentum, or wheel), it
-   *    smoothly glides to the target section with a 400ms cubic ease-out transition.
-   * 4. Uses native `scrollend` (Firefox, Safari, Chrome) with a touch/gesture-aware
-   *    idle timer fallback for maximum cross-platform compatibility.
-   */
+      const sort = params.get('sort');
+      if (sort === 'newest' || sort === 'stars' || sort === 'name') {
+        setSortBy(sort);
+      } else {
+        setSortBy('newest');
+      }
+
+      const view = params.get('view') || localStorage.getItem('daedalabs_view');
+      if (view === 'grid' || view === 'table') {
+        setViewMode(view);
+      }
+
+      const toolSlug = params.get('tool');
+      if (toolSlug) {
+        const match = initialTools.find((t) => t.slug === toolSlug);
+        setSelectedModalTool(match || null);
+      } else {
+        setSelectedModalTool(null);
+      }
+    };
+
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [initialTools]);
+
+  // Native smooth scrolling:
+  // Tracks scroll position for the docked header reveal and optional hero visual scaling.
+  // Respects prefers-reduced-motion. No wheel hijacking or preventDefault().
   useEffect(() => {
     let frame: number | null = null;
-    let snapTimer: number | null = null;
-    let heroHeight = window.innerHeight;
-    let lastScrolled: boolean | null = null;
-
-    const measure = () => {
-      heroHeight = heroSectionRef.current?.offsetHeight || window.innerHeight;
-    };
-
-    const snapTo = (targetY: number, duration = 400) => {
-      if (animFrameRef.current !== null) {
-        cancelAnimationFrame(animFrameRef.current);
-        animFrameRef.current = null;
-      }
-
-      const startY = window.scrollY;
-      const distance = targetY - startY;
-
-      if (Math.abs(distance) < 2) {
-        window.scrollTo(0, targetY);
-        isSnappingRef.current = false;
-        targetYRef.current = null;
-        return;
-      }
-
-      isSnappingRef.current = true;
-      targetYRef.current = targetY;
-      const startTime = performance.now();
-      const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
-
-      const step = (now: number) => {
-        if (!isSnappingRef.current) {
-          animFrameRef.current = null;
-          targetYRef.current = null;
-          return;
-        }
-
-        const elapsed = now - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        const currentY = Math.round(startY + distance * easeOut(progress));
-
-        window.scrollTo(0, currentY);
-
-        if (progress < 1) {
-          animFrameRef.current = requestAnimationFrame(step);
-        } else {
-          animFrameRef.current = null;
-          window.scrollTo(0, targetY);
-          setTimeout(() => {
-            isSnappingRef.current = false;
-            targetYRef.current = null;
-          }, 80);
-        }
-      };
-
-      animFrameRef.current = requestAnimationFrame(step);
-    };
-
-    snapToRef.current = snapTo;
-
-    const checkAndSnap = () => {
-      if (snapTimer !== null) {
-        clearTimeout(snapTimer);
-        snapTimer = null;
-      }
-      if (isUserTouchingRef.current || isSnappingRef.current) return;
-
-      const scrollY = window.scrollY;
-      const dock = Math.max(0, heroHeight - HEADER_OFFSET);
-
-      // Only snap if currently stopped in the overlap between hero and catalog
-      if (scrollY <= 8 || scrollY >= dock - 8) return;
-
-      let target: number;
-      if (lastDirectionRef.current === 'down') {
-        target = scrollY >= Math.min(80, dock * 0.15) ? dock : 0;
-      } else if (lastDirectionRef.current === 'up') {
-        target = scrollY <= Math.max(dock - 80, dock * 0.85) ? 0 : dock;
-      } else {
-        target = scrollY > dock * 0.45 ? dock : 0;
-      }
-
-      snapTo(target, 400);
-    };
-
-    const scheduleSnap = (delay = 180) => {
-      if (snapTimer !== null) clearTimeout(snapTimer);
-      snapTimer = window.setTimeout(checkAndSnap, delay);
-    };
+    const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 
     const update = () => {
       const scrollY = window.scrollY;
       const scrolled = scrollY > HEADER_OFFSET;
-      if (scrolled !== lastScrolled) {
-        lastScrolled = scrolled;
-        setIsScrolled(scrolled);
-      }
+      setIsScrolled(scrolled);
 
-      const diff = scrollY - lastScrollYRef.current;
-      if (Math.abs(diff) >= 2) {
-        lastDirectionRef.current = diff > 0 ? 'down' : 'up';
-      }
-      lastScrollYRef.current = scrollY;
-
-      const progress = Math.min(1, Math.max(0, scrollY / Math.max(1, heroHeight)));
       if (heroContentRef.current) {
-        heroContentRef.current.style.transform = `scale(${1 - HERO_SCALE * progress})`;
-        heroContentRef.current.style.opacity = `${1 - 0.25 * progress}`;
+        if (reducedMotionQuery.matches) {
+          heroContentRef.current.style.transform = 'none';
+          heroContentRef.current.style.opacity = '1';
+        } else {
+          const heroHeight = heroSectionRef.current?.offsetHeight || window.innerHeight;
+          const progress = Math.min(1, Math.max(0, scrollY / Math.max(1, heroHeight)));
+          heroContentRef.current.style.transform = `scale(${1 - HERO_SCALE * progress})`;
+          heroContentRef.current.style.opacity = `${1 - 0.25 * progress}`;
+        }
       }
     };
 
@@ -372,147 +330,29 @@ export function ToolsExplorer({ initialTools, site }: ToolsExplorerProps) {
       frame = requestAnimationFrame(() => {
         frame = null;
         update();
-        if (!isSnappingRef.current && !isUserTouchingRef.current) {
-          scheduleSnap(180);
-        }
       });
     };
 
-    const onScrollEnd = () => {
-      if (isUserTouchingRef.current || isSnappingRef.current) return;
-      checkAndSnap();
-    };
-
-    const onTouchStart = () => {
-      isUserTouchingRef.current = true;
-      if (isSnappingRef.current) {
-        isSnappingRef.current = false;
-        targetYRef.current = null;
-        if (animFrameRef.current !== null) {
-          cancelAnimationFrame(animFrameRef.current);
-          animFrameRef.current = null;
-        }
-      }
-      if (snapTimer !== null) {
-        clearTimeout(snapTimer);
-        snapTimer = null;
-      }
-    };
-
-    const onTouchEnd = () => {
-      isUserTouchingRef.current = false;
-      // After finger lift, allow kinetic momentum to settle then verify snap
-      scheduleSnap(260);
-    };
-
-    const onWheel = (e: WheelEvent) => {
-      // 1. Gesture detection: Trackpad vs discrete mouse wheel detents
-      if (gestureTimerRef.current !== null) {
-        window.clearTimeout(gestureTimerRef.current);
-      }
-      gestureTimerRef.current = window.setTimeout(() => {
-        gestureTimerRef.current = null;
-        isTrackpadRef.current = false;
-      }, 160);
-
-      if (!isTrackpadRef.current) {
-        const isLineOrPage = e.deltaMode !== 0;
-        const isFractional = !Number.isInteger(e.deltaY) || !Number.isInteger(e.deltaX);
-        const hasHorizontal = Math.abs(e.deltaX) > 0.1;
-        const isSmallDelta = Math.abs(e.deltaY) < 40;
-
-        if (!isLineOrPage && (isFractional || hasHorizontal || isSmallDelta)) {
-          isTrackpadRef.current = true;
-        }
-      }
-
-      // 2. Cancellation check: Only yield control if user intentionally scrolls against active snap
-      if (isSnappingRef.current && targetYRef.current !== null) {
-        const isMovingDown = targetYRef.current > window.scrollY;
-        const isOpposing = isMovingDown ? e.deltaY < -12 : e.deltaY > 12;
-
-        if (isOpposing) {
-          isSnappingRef.current = false;
-          targetYRef.current = null;
-          if (animFrameRef.current !== null) {
-            cancelAnimationFrame(animFrameRef.current);
-            animFrameRef.current = null;
-          }
-        }
-      }
-
-      // 3. Discrete mouse wheel navigation in the hero-to-catalog transition region
-      if (!isTrackpadRef.current) {
-        const scrollY = window.scrollY;
-        const dock = Math.max(0, heroHeight - HEADER_OFFSET);
-
-        // Case A: At or near the hero, scrolling down
-        if (e.deltaY > 0 && scrollY < dock - 2) {
-          e.preventDefault();
-          if (isSnappingRef.current && targetYRef.current === dock) return;
-          lastDirectionRef.current = 'down';
-          snapTo(dock, 400);
-          return;
-        }
-
-        // Case B: At the catalog top boundary, scrolling up into the hero
-        if (e.deltaY < 0 && scrollY <= dock + 2 && scrollY > 8) {
-          e.preventDefault();
-          if (isSnappingRef.current && targetYRef.current === 0) return;
-          lastDirectionRef.current = 'up';
-          snapTo(0, 400);
-          return;
-        }
-      }
-    };
-
-    const onResize = () => {
-      measure();
-      update();
-    };
-
     window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onResize);
-    window.addEventListener('wheel', onWheel, { passive: false });
-    window.addEventListener('touchstart', onTouchStart, { passive: true });
-    window.addEventListener('touchend', onTouchEnd, { passive: true });
-    window.addEventListener('touchcancel', onTouchEnd, { passive: true });
-
-    if ('onscrollend' in window) {
-      window.addEventListener('scrollend', onScrollEnd);
-    }
-
-    measure();
     update();
 
     return () => {
       window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onResize);
-      window.removeEventListener('wheel', onWheel);
-      window.removeEventListener('touchstart', onTouchStart);
-      window.removeEventListener('touchend', onTouchEnd);
-      window.removeEventListener('touchcancel', onTouchEnd);
-      if ('onscrollend' in window) {
-        window.removeEventListener('scrollend', onScrollEnd);
-      }
       if (frame !== null) cancelAnimationFrame(frame);
-      if (animFrameRef.current !== null) cancelAnimationFrame(animFrameRef.current);
-      if (snapTimer !== null) clearTimeout(snapTimer);
-      if (gestureTimerRef.current !== null) clearTimeout(gestureTimerRef.current);
-      snapToRef.current = null;
     };
   }, []);
 
-  /** Bring the catalog under the docked header with smooth animated transition. */
+  /** Smooth scroll down to the projects catalog */
   const scrollToTools = useCallback(() => {
     const heroH = heroSectionRef.current?.offsetHeight || window.innerHeight;
     const dock = Math.max(0, heroH - HEADER_OFFSET);
-    lastDirectionRef.current = 'down';
-    if (snapToRef.current) {
-      snapToRef.current(dock, 480);
-    } else {
-      window.scrollTo(0, dock);
-    }
+    const prefersReducedMotion = window.matchMedia(
+      '(prefers-reduced-motion: reduce)'
+    ).matches;
+    window.scrollTo({
+      top: dock,
+      behavior: prefersReducedMotion ? 'instant' : 'smooth',
+    });
   }, []);
 
   useEffect(() => {
@@ -538,13 +378,14 @@ export function ToolsExplorer({ initialTools, site }: ToolsExplorerProps) {
           document.activeElement === headerInputRef.current)
       ) {
         setSearch('');
+        updateUrl('', selectedCategory, sortBy, viewMode, selectedModalTool, false);
         (document.activeElement as HTMLElement | null)?.blur();
       }
     };
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [selectedModalTool, isScrolled]);
+  }, [selectedModalTool, isScrolled, selectedCategory, sortBy, viewMode, updateUrl]);
 
   const filteredTools = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -575,25 +416,51 @@ export function ToolsExplorer({ initialTools, site }: ToolsExplorerProps) {
   }, [initialTools, search, selectedCategory, sortBy]);
 
   const hasActiveFilters = search.trim() !== '' || selectedCategory !== 'all';
-  const activeCategoryLabel = CATEGORIES.find(
+  const activeCategoryLabel = ALL_CATEGORIES.find(
     (entry) => entry.id === selectedCategory
   )?.label;
 
-  const clearFilters = () => {
-    setSearch('');
-    setSelectedCategory('all');
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    updateUrl(value, selectedCategory, sortBy, viewMode, selectedModalTool, false);
   };
 
-  const handleSelectTool = (tool: ToolItem) => setSelectedModalTool(tool);
+  const handleSelectCategory = (cat: string) => {
+    setSelectedCategory(cat);
+    updateUrl(search, cat, sortBy, viewMode, selectedModalTool, true);
+  };
 
-  const handleRandomTool = () => {
-    if (initialTools.length === 0) return;
-    setSelectedModalTool(initialTools[Math.floor(Math.random() * initialTools.length)]);
+  const handleSelectSort = (sort: SortOption) => {
+    setSortBy(sort);
+    updateUrl(search, selectedCategory, sort, viewMode, selectedModalTool, true);
   };
 
   const handleSetViewMode = (mode: ViewMode) => {
     setViewMode(mode);
     localStorage.setItem('daedalabs_view', mode);
+    updateUrl(search, selectedCategory, sortBy, mode, selectedModalTool, true);
+  };
+
+  const clearFilters = () => {
+    setSearch('');
+    setSelectedCategory('all');
+    updateUrl('', 'all', sortBy, viewMode, selectedModalTool, true);
+  };
+
+  const handleSelectTool = (tool: ToolItem) => {
+    setSelectedModalTool(tool);
+    updateUrl(search, selectedCategory, sortBy, viewMode, tool, true);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedModalTool(null);
+    updateUrl(search, selectedCategory, sortBy, viewMode, null, false);
+  };
+
+  const handleRandomTool = () => {
+    if (initialTools.length === 0) return;
+    const random = initialTools[Math.floor(Math.random() * initialTools.length)];
+    handleSelectTool(random);
   };
 
   const openFirstResult = () => {
@@ -609,21 +476,34 @@ export function ToolsExplorer({ initialTools, site }: ToolsExplorerProps) {
         githubOrg={siteInfo.githubOrg}
         actions={
           isScrolled ? (
-            <>
-              <div className="hidden sm:block">
-                <SortMenu value={sortBy} onChange={setSortBy} />
-              </div>
+            <div className="flex items-center gap-1 sm:gap-1.5">
+              <label htmlFor="header-category" className="sr-only">
+                Category
+              </label>
+              <select
+                id="header-category"
+                value={selectedCategory}
+                onChange={(e) => handleSelectCategory(e.target.value)}
+                className="hidden md:inline-flex h-9 rounded-md border border-line bg-surface/60 px-2 font-mono text-[11px] text-ink-muted transition-colors hover:border-line-strong hover:text-ink focus:outline-none"
+              >
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id} className="bg-elevated text-ink">
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+              <SortMenu value={sortBy} onChange={handleSelectSort} />
               <button
                 type="button"
                 onClick={handleRandomTool}
                 title="Preview a random project"
                 aria-label="Preview a random project"
-                className="hidden h-9 w-9 items-center justify-center rounded-md text-ink-dim transition-colors duration-200 hover:bg-surface hover:text-ink sm:flex"
+                className="flex h-9 w-9 items-center justify-center rounded-md text-ink-dim transition-colors duration-200 hover:bg-surface hover:text-ink"
               >
                 <Shuffle className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
               <ViewToggle value={viewMode} onChange={handleSetViewMode} />
-            </>
+            </div>
           ) : null
         }
       >
@@ -637,7 +517,7 @@ export function ToolsExplorer({ initialTools, site }: ToolsExplorerProps) {
               id="header-search"
               compact
               value={search}
-              onChange={setSearch}
+              onChange={handleSearchChange}
               onEnter={openFirstResult}
               inputRef={headerInputRef}
             />
@@ -647,7 +527,11 @@ export function ToolsExplorer({ initialTools, site }: ToolsExplorerProps) {
 
       <ThemeToggle />
 
-      <main data-hydrated={isHydrated ? 'true' : undefined} className="flex-1">
+      <main
+        data-hydrated={isHydrated ? 'true' : undefined}
+        inert={selectedModalTool ? true : undefined}
+        className="flex-1"
+      >
         <section
           ref={heroSectionRef}
           className="sticky top-0 flex h-[100svh] flex-col overflow-hidden"
@@ -702,7 +586,8 @@ export function ToolsExplorer({ initialTools, site }: ToolsExplorerProps) {
                 </a>
               </div>
 
-              <div className="mt-10">
+              {/* Search & Discovery Toolbar */}
+              <div className="mt-8 space-y-3.5">
                 <div
                   role="search"
                   aria-label="Filter projects"
@@ -712,7 +597,7 @@ export function ToolsExplorer({ initialTools, site }: ToolsExplorerProps) {
                     <SearchField
                       id="hero-search"
                       value={search}
-                      onChange={setSearch}
+                      onChange={handleSearchChange}
                       onEnter={openFirstResult}
                       inputRef={heroInputRef}
                     />
@@ -727,6 +612,43 @@ export function ToolsExplorer({ initialTools, site }: ToolsExplorerProps) {
                     <Shuffle className="h-3.5 w-3.5" aria-hidden="true" />
                   </button>
                 </div>
+
+                {/* Discovery toolbar in hero */}
+                <div
+                  role="toolbar"
+                  aria-label="Project discovery controls"
+                  className="flex flex-wrap items-center justify-between gap-3 pt-0.5"
+                >
+                  <div
+                    role="group"
+                    aria-label="Filter by category"
+                    className="flex flex-wrap items-center gap-1.5"
+                  >
+                    {categories.map((cat) => {
+                      const active = selectedCategory === cat.id;
+                      return (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => handleSelectCategory(cat.id)}
+                          aria-pressed={active}
+                          className={`inline-flex h-8 items-center rounded-md px-2.5 font-mono text-[11px] transition-colors duration-150 ${
+                            active
+                              ? 'bg-ink text-canvas font-medium shadow-sm'
+                              : 'border border-line bg-surface/50 text-ink-muted hover:border-line-strong hover:text-ink'
+                          }`}
+                        >
+                          <span>{cat.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <SortMenu value={sortBy} onChange={handleSelectSort} />
+                    <ViewToggle value={viewMode} onChange={handleSetViewMode} />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -737,6 +659,7 @@ export function ToolsExplorer({ initialTools, site }: ToolsExplorerProps) {
           aria-label="Projects"
           className="relative z-10 flex min-h-[calc(100svh-98px)] flex-col scroll-mt-16 border-t border-line bg-canvas shadow-[0_-18px_50px_-30px_rgba(0,0,0,0.4)]"
         >
+          <h2 className="sr-only">Catalog of Open Source Projects</h2>
           <div
             className={`mx-auto flex w-full max-w-5xl flex-col px-5 sm:px-8 ${
               initialTools.length === 0
@@ -744,6 +667,22 @@ export function ToolsExplorer({ initialTools, site }: ToolsExplorerProps) {
                 : 'pb-16 pt-6 sm:pb-20 sm:pt-8'
             }`}
           >
+            {isStale && (
+              <div
+                role="status"
+                aria-live="polite"
+                className="mb-5 flex items-center gap-2 rounded-md border border-line bg-surface/60 px-3.5 py-2.5 font-mono text-[12px] text-ink-dim"
+              >
+                <span
+                  className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent animate-pulse"
+                  aria-hidden="true"
+                />
+                <span>
+                  Showing the last successful sync. GitHub is temporarily unavailable.
+                </span>
+              </div>
+            )}
+
             {hasActiveFilters && (
               <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex flex-wrap items-center gap-2">
@@ -756,7 +695,7 @@ export function ToolsExplorer({ initialTools, site }: ToolsExplorerProps) {
                       <span>category: {activeCategoryLabel}</span>
                       <button
                         type="button"
-                        onClick={() => setSelectedCategory('all')}
+                        onClick={() => handleSelectCategory('all')}
                         title="Remove category filter"
                         aria-label="Remove category filter"
                         className="text-ink-dim transition-colors hover:text-ink"
@@ -770,7 +709,7 @@ export function ToolsExplorer({ initialTools, site }: ToolsExplorerProps) {
                       <span>query: &ldquo;{search.trim()}&rdquo;</span>
                       <button
                         type="button"
-                        onClick={() => setSearch('')}
+                        onClick={() => handleSearchChange('')}
                         title="Remove search query"
                         aria-label="Remove search query"
                         className="text-ink-dim transition-colors hover:text-ink"
@@ -879,7 +818,17 @@ export function ToolsExplorer({ initialTools, site }: ToolsExplorerProps) {
                         </span>
                       </div>
 
-                      <div className="flex shrink-0 items-center gap-3">
+                      <div className="flex shrink-0 items-center gap-2.5">
+                        {tool.featured && (
+                          <span className="rounded border border-accent/30 bg-accent-soft px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-accent">
+                            featured
+                          </span>
+                        )}
+                        {tool.status === 'archived' && (
+                          <span className="rounded border border-line bg-surface/80 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-ink-dim">
+                            archived
+                          </span>
+                        )}
                         <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-ink-dim">
                           {categoryLabels[tool.category] ?? categoryLabels.other}
                         </span>
@@ -920,9 +869,9 @@ export function ToolsExplorer({ initialTools, site }: ToolsExplorerProps) {
             </div>
           </div>
         </section>
-
-        <ToolModal tool={selectedModalTool} onClose={() => setSelectedModalTool(null)} />
       </main>
+
+      <ToolModal tool={selectedModalTool} onClose={handleCloseModal} />
     </>
   );
 }

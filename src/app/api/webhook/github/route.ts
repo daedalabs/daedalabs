@@ -35,10 +35,19 @@ async function verifyGithubSignature(
 
 export async function POST(request: Request) {
   try {
+    const isProduction = process.env.NODE_ENV === 'production';
+    const secret = process.env.GITHUB_WEBHOOK_SECRET;
+
+    if (isProduction && !secret) {
+      return NextResponse.json(
+        { error: 'GITHUB_WEBHOOK_SECRET is not configured' },
+        { status: 503 }
+      );
+    }
+
     const event = request.headers.get('x-github-event') || 'unknown';
     const body = await request.text();
 
-    const secret = process.env.GITHUB_WEBHOOK_SECRET;
     if (secret) {
       const signature = request.headers.get('x-hub-signature-256');
       if (!signature) {
