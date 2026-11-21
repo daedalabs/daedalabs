@@ -265,6 +265,7 @@ export function repoToToolItem(repo: GithubRepo) {
     | 'web'
     | 'cli'
     | 'library'
+    | 'plugin'
     | 'ai'
     | 'automation'
     | 'hardware'
@@ -285,6 +286,15 @@ export function repoToToolItem(repo: GithubRepo) {
     nameLower.startsWith('mini-')
   ) {
     category = 'byox';
+  } else if (
+    topicsLower.includes('plugin') ||
+    topicsLower.includes('obsidian-plugin') ||
+    topicsLower.includes('obsidian') ||
+    topicsLower.includes('extension') ||
+    nameLower === 'mitos' ||
+    /\b(plugin|obsidian)\b/i.test(descLower)
+  ) {
+    category = 'plugin';
   } else if (
     topicsLower.includes('desktop') ||
     topicsLower.includes('electron') ||
@@ -370,6 +380,12 @@ export function repoToToolItem(repo: GithubRepo) {
     if (!['daedalabs', 'tool', 'project'].includes(topic.toLowerCase())) {
       tagsSet.add(topic);
     }
+  }
+
+  // Ensure plugin category has 'plugin' tag instead of 'ai'
+  if (category === 'plugin' || nameLower === 'mitos') {
+    tagsSet.delete('ai');
+    tagsSet.add('plugin');
   }
 
   return {
