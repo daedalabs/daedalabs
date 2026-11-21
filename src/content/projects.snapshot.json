@@ -1,5 +1,22 @@
 [
   {
+    "slug": "mitos",
+    "name": "mitos",
+    "tagline": "AI brainstorming, series planning, and anti-slop content engine for Obsidian.",
+    "category": "ai",
+    "status": "beta",
+    "tags": ["TypeScript", "obsidian", "obsidian-plugin", "ai", "content-creation"],
+    "githubUrl": "https://github.com/daedalabs/mitos",
+    "demoUrl": null,
+    "featured": true,
+    "releaseDate": "2026-11-21",
+    "updatedAt": "2026-11-21T12:00:00Z",
+    "stargazersCount": 0,
+    "forksCount": 0,
+    "license": "Source-Available",
+    "primaryLanguage": "TypeScript"
+  },
+  {
     "slug": "pyron",
     "name": "pyron",
     "tagline": "Headless provenance-first academic compiler engine.",
