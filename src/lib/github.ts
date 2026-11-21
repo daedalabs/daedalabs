@@ -325,7 +325,8 @@ export function repoToToolItem(repo: GithubRepo) {
   } else if (
     topicsLower.includes('library') ||
     topicsLower.includes('sdk') ||
-    topicsLower.includes('package')
+    topicsLower.includes('package') ||
+    /\b(library|compiler|engine|sdk|module)\b/i.test(descLower)
   ) {
     category = 'library';
   } else if (
